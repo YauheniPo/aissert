@@ -1,0 +1,31 @@
+# CI per DESIGN.md §8: cheap checks on every PR. Canary eval (workflow_dispatch +
+# weekly, costs API money) is a separate workflow, added in milestone 4.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  schema-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: Lint plugin manifests and frontmatter
+        run: pytest tests/test_plugin_schema.py -q
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: Unit tests
+        run: pytest tests/ -q

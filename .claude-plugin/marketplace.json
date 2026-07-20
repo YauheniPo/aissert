@@ -1,0 +1,14 @@
+{
+  "name": "aissert",
+  "owner": {
+    "name": "Yauheni Papovich"
+  },
+  "plugins": [
+    {
+      "name": "aissert",
+      "source": "./",
+      "version": "0.1.0",
+      "description": "LLM-as-judge eval harness for Claude Code skills: fact-level binary verdicts, deterministic Python gates."
+    }
+  ]
+}
