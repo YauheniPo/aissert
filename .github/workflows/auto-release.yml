@@ -1,0 +1,59 @@
+# Auto-bump per merge to main: scripts/bump_version.py picks the bump level
+# from conventional commit subjects since the last aissert--v* tag, commits
+# the version bump, and pushes a matching tag. That tag push triggers
+# release.yml, which builds the zip and publishes the GitHub Release.
+#
+# Guard: the bump commit itself starts with "chore(release):" — the job
+# condition below skips re-running on that push, so the bump commit can't
+# trigger an infinite bump loop.
+#
+# Requires: main must accept direct pushes from the default GITHUB_TOKEN
+# (no branch protection blocking the Actions bot), since this pushes a commit
+# and a tag straight to main without a PR.
+name: auto-release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump-and-tag:
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bump version from conventional commits
+        id: bump
+        run: |
+          set +e
+          new_version=$(python3 scripts/bump_version.py)
+          status=$?
+          set -e
+          if [ "$status" -eq 3 ]; then
+            echo "no release-worthy commits since last tag, skipping"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          echo "new_version=${new_version}" >> "$GITHUB_OUTPUT"
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit bump and tag
+        if: steps.bump.outputs.should_release == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): bump version to ${{ steps.bump.outputs.new_version }}"
+          git tag "aissert--v${{ steps.bump.outputs.new_version }}"
+          git push origin main --follow-tags

@@ -2,7 +2,7 @@
   "id": "cn-003",
   "judge": "precision",
   "borderline": true,
-  "reviewed": false,
+  "reviewed": true,
   "source": {
     "golden_item": "gs-002",
     "iteration": 1,
@@ -91,7 +91,7 @@
       },
       {
         "fact_id": "f3",
-        "verdict": "supported"
+        "verdict": "unsupported"
       },
       {
         "fact_id": "f4",

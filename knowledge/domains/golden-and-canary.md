@@ -11,7 +11,7 @@ related_pages:
   - ../index.md
   - eval-pipeline.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
 ---
 
 ## The distinction that matters
@@ -47,6 +47,15 @@ snapshots) in this repo, ever. `golden/example/` is synthetic (fictional
 "Meridian" fitness app) and doubles as the CI fixture. Real sets live in
 internal GitLab, passed by path via the `golden_set` parameter.
 
+**Gitignore is not enough — real sets must live outside the repo tree
+entirely.** A local "directory"-source plugin marketplace install
+(`/plugin marketplace add ./`) copies the whole working tree into
+`~/.claude/plugins/cache/...` verbatim, `.gitignore` included — a gitignored
+`golden-local/` folder *inside* the repo still leaks into that global cache on
+every install/reinstall, just outside git history instead of inside it. Real
+sets need a path outside the repo directory (e.g. `~/golden-sets/<skill>/`),
+not merely gitignored, or they leak on every reinstall regardless.
+
 ## Canary (contract: `canary-schema.md`)
 
 Each item freezes **one judge's exact input** — golden facts + extracted
@@ -66,7 +75,9 @@ for the review workflow and a worked borderline example.
 `borderline: true` marks a deliberately hard case (paraphrase limit,
 granularity mismatch, partial overlap) — the set must contain several, or
 canary only calibrates the obvious cases. `manifest.json.min_agreement`
-(currently `1.0`) is the minimum fraction of matching verdicts to pass;
-relax only with evidence a specific borderline case legitimately oscillates.
+(currently `0.90`, relaxed from `1.0` on 2026-07-21 — see
+[judges-and-canary.md](../hotspots/judges-and-canary.md) for the live-run
+evidence) is the minimum fraction of matching verdicts to pass; relax only
+with evidence a specific borderline case legitimately oscillates.
 
 Same data-boundary rule as golden sets: only synthetic canary items here.

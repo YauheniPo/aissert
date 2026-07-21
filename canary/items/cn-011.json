@@ -2,7 +2,7 @@
   "id": "cn-011",
   "judge": "recall",
   "borderline": false,
-  "reviewed": false,
+  "reviewed": true,
   "source": {
     "golden_item": "gs-003",
     "iteration": 1,

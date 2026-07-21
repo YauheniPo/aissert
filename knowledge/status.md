@@ -16,24 +16,33 @@ last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
 Milestones 1-3 (contracts, aggregate.py + tests, plugin scaffold, schema-lint
 CI, agent prompts, scripts, synthetic `golden/example`) are done.
 
-Milestone 4 (pilot + judge calibration) ran end-to-end technically, but is
-**not calibrated**: the canary draft built from pilot verdicts has every item
-at `reviewed: false`. `check_canary.py` refuses unreviewed items by design
-(see [judges-and-canary.md](hotspots/judges-and-canary.md)) — this is the
-current hard blocker before any eval result can be trusted.
+Milestone 4's canary hand-review is done (2026-07-21): all 13 items in
+`canary/items/` are `reviewed: true` (12 from the pilot + `cn-013`, added to
+cover a `missing`-verdict gap). Two calibration inconsistencies were found
+and fixed in the pilot labels during review — see
+[judges-and-canary.md](hotspots/judges-and-canary.md) for what and why.
+
+**Not yet done, don't overstate the above:** this review hand-verified the
+frozen `expected` labels against the rubric. It did not run the current live
+judge agents against these inputs — that live-agreement check
+(`check_canary.py` comparing fresh judge output to `expected`) happens at
+eval time (`SKILL.md` step 0) and hasn't been executed since these fixes
+landed. Run it once before trusting the next real eval's verdict.
 
 Milestone 5 (baseline-derived K1/K2, report-only period, then gate) has not
-started; it depends on a reviewed canary.
+started.
 
 ## What this means in practice
 
-- Until the canary is reviewed: treat any `results.json` verdict as
-  **uncalibrated**, don't use it to gate a real skill.
+- The canary is reviewed, but not yet re-confirmed live — run
+  `check_canary.py` against fresh judge output before trusting a
+  `results.json` verdict, don't assume "canary reviewed" alone covers it.
 - K1/K2 defaults in `golden/*/manifest.json` are currently invented, not
   derived from a baseline — don't treat them as meaningful thresholds yet.
 - Any change to judge prompts or the model pin (`model:` in `agents/*.md`)
-  makes the review-blocker worse until canary review happens — see the
-  model-pin playbook in [change-playbooks.md](domains/change-playbooks.md).
+  requires a fresh canary run and, if it diverges, a fresh calibration
+  decision, same as before this review — see the model-pin playbook in
+  [change-playbooks.md](domains/change-playbooks.md).
 
 ## Known, accepted limitations (not bugs)
 

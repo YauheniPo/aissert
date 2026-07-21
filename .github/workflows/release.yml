@@ -1,0 +1,43 @@
+# Release per DESIGN.md packaging: build the plugin zip and publish it as a
+# GitHub Release asset. Triggered by the tag `claude plugin tag` creates
+# (format: aissert--v<version>), so the tag is always plugin.json-consistent
+# before this workflow ever runs.
+name: release
+
+on:
+  push:
+    tags:
+      - "aissert--v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build plugin zip
+        run: python3 scripts/build_plugin_zip.py
+
+      - name: Check tag matches plugin version
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          expected_tag="aissert--v${version}"
+          if [ "${GITHUB_REF_NAME}" != "${expected_tag}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match plugin.json version ${version} (expected ${expected_tag})" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.zip \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
