@@ -5,11 +5,16 @@ datasets over N iterations, extracts atomic facts, and gates on precision/recall
 thresholds. Fact-level binary verdicts instead of holistic scores; all math is
 deterministic Python, never LLM.
 
-Status: design approved, milestones 1–4 in progress: 1–3 done (contracts,
-aggregate.py + tests, plugin scaffold, schema-lint CI, agent prompts, scripts,
-synthetic golden/example); milestone 4 pilot ran end-to-end, canary draft built
-from pilot verdicts — awaiting hand review (reviewed: false), judge calibration
-pending. This document is the source of truth. If implementation needs to deviate, update this file in the same MR/PR.
+Status: design approved, milestones 1–4 done: 1–3 (contracts, aggregate.py +
+tests, plugin scaffold, schema-lint CI, agent prompts, scripts, synthetic
+golden/example); 4 (canary built and hand-reviewed, all items `reviewed: true`;
+a live judge rerun against a real target skill found genuine judge-precision
+drift on borderline items, fixed via rubric + `min_agreement` relaxed to 0.90
+with evidence — see knowledge/hotspots/judges-and-canary.md). Milestone 5
+(baseline run, K1/K2 derived from it, report-only period, then gate) has not
+started — current K1/K2 in golden/*/manifest.json are placeholders, not
+calibrated. This document is the source of truth. If implementation needs to
+deviate, update this file in the same MR/PR.
 
 ---
 
