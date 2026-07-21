@@ -1,0 +1,20 @@
+{
+  "id": "gs-001",
+  "input": {
+    "type": "text",
+    "key": "MER-101",
+    "snapshot": "Bug report from user forum (Meridian fitness app, fictional):\n\nhey so the login is busted again?? i'm on the android app, version 3.2.1. when i type my password and hit login the spinner just goes forever. if i wait it eventually says 'request timed out'. my wife has the iphone version and hers works fine. oh and this only started after the last update, 3.2.0 was ok. i tried reinstalling, no luck. wifi and mobile data both do it. one more thing - if i use the 'sign in with google' button instead, that works, it's only the email+password login that hangs."
+  },
+  "reference": {
+    "golden_facts": [
+      {"id": "gf1", "text": "The issue affects the Android app"},
+      {"id": "gf2", "text": "The affected app version is 3.2.1"},
+      {"id": "gf3", "text": "Email+password login hangs and ends with a 'request timed out' error"},
+      {"id": "gf4", "text": "iOS is not affected"},
+      {"id": "gf5", "text": "The issue appeared after updating from version 3.2.0"},
+      {"id": "gf6", "text": "The issue reproduces on both wifi and mobile data"},
+      {"id": "gf7", "text": "Google sign-in works, only email+password login is affected"}
+    ]
+  },
+  "weights": {}
+}

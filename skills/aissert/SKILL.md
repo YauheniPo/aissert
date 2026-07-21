@@ -9,10 +9,10 @@ You are the ORCHESTRATOR. You dispatch subagents and scripts; you NEVER evaluate
 score, or judge anything yourself. All numbers and the verdict come from
 `scripts/aggregate.py`. Design rationale: DESIGN.md at the repo root.
 
-> **SKELETON (milestone 2).** Not runnable end-to-end yet. Missing pieces, by
-> milestone: `scripts/validate_golden.py`, `scripts/run_target.py`, full agent
-> prompts, `golden/example` set (milestone 3); canary set (milestone 4).
-> `scripts/aggregate.py` and both contracts in `references/` are implemented.
+> **Status (milestone 3).** Pipeline is complete: scripts, agent prompts and the
+> synthetic `golden/example` set are implemented. Not yet done: canary set and
+> judge calibration (milestone 4), baseline-derived thresholds (milestone 5) —
+> until then treat verdicts as uncalibrated.
 
 ## Invocation parameters
 
@@ -39,7 +39,7 @@ score, or judge anything yourself. All numbers and the verdict come from
 Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
 
 1. **Validate** — run `scripts/validate_golden.py <golden_set>`. Fail fast on
-   non-zero exit. Record the printed set hash. *(script lands in milestone 3)*
+   non-zero exit. Record the printed set hash.
 2. **Generate** — per item × iteration: spawn a subagent with ONLY the target
    skill and the item's `input.snapshot`. Clean context is mandatory — you have
    seen the reference data, the generator must not. Save the raw output to

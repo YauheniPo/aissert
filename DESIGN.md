@@ -5,8 +5,10 @@ datasets over N iterations, extracts atomic facts, and gates on precision/recall
 thresholds. Fact-level binary verdicts instead of holistic scores; all math is
 deterministic Python, never LLM.
 
-Status: design approved, milestones 1–2 implemented (contracts, aggregate.py + tests,
-plugin scaffold, schema-lint CI). This document is the source of truth. If implementation needs to deviate, update this file in the same MR/PR.
+Status: design approved, milestones 1–3 implemented (contracts, aggregate.py + tests,
+plugin scaffold, schema-lint CI, agent prompts, validate_golden.py, run_target.py,
+synthetic golden/example). Next: milestone 4 (pilot, calibration, canary set).
+This document is the source of truth. If implementation needs to deviate, update this file in the same MR/PR.
 
 ---
 

@@ -112,6 +112,7 @@ def write_run(run_dir, item_id, iteration, n_facts, n_supported, n_golden, cover
 def item(n_golden=4, weights=None, item_id="gs-001"):
     return GoldenItem(
         id=item_id,
+        snapshot="synthetic input",
         golden_fact_ids=tuple(f"gf{k}" for k in range(1, n_golden + 1)),
         weights=weights or {},
     )
@@ -145,7 +146,7 @@ def test_zero_extracted_facts_is_pipeline_error():
 
 
 def test_zero_golden_facts_is_pipeline_error():
-    empty = GoldenItem(id="gs-x", golden_fact_ids=(), weights={})
+    empty = GoldenItem(id="gs-x", snapshot="s", golden_fact_ids=(), weights={})
     with pytest.raises(PipelineError, match="no golden facts"):
         compute_run_metrics(empty, 1, total_extracted=5, supported=5, covered_ids=set())
 
@@ -355,6 +356,14 @@ def test_golden_empty_golden_facts_rejected(tmp_path):
     payload["reference"]["golden_facts"] = []
     gdir = make_golden(tmp_path, [payload])
     with pytest.raises(PipelineError, match="non-empty array"):
+        load_golden_set(gdir)
+
+
+def test_golden_missing_snapshot_rejected(tmp_path):
+    payload = golden_item_payload("gs-001", 2)
+    payload["input"] = {"type": "text", "snapshot": ""}
+    gdir = make_golden(tmp_path, [payload])
+    with pytest.raises(PipelineError, match="snapshot"):
         load_golden_set(gdir)
 
 

@@ -44,6 +44,7 @@ class PipelineError(Exception):
 @dataclass(frozen=True)
 class GoldenItem:
     id: str
+    snapshot: str
     golden_fact_ids: tuple[str, ...]
     weights: dict[str, float]
 
@@ -127,6 +128,12 @@ def _validate_golden_item(data: dict, path: Path) -> GoldenItem:
     if item_id != path.stem:
         raise PipelineError(f"{ctx}: id {item_id!r} does not match filename stem {path.stem!r}")
 
+    input_block = data.get("input")
+    if not isinstance(input_block, dict):
+        raise PipelineError(f"{ctx}: 'input' must be an object")
+    _require_str(input_block, "type", f"{ctx}: input")
+    snapshot = _require_str(input_block, "snapshot", f"{ctx}: input")
+
     reference = data.get("reference")
     if not isinstance(reference, dict):
         raise PipelineError(f"{ctx}: 'reference' must be an object")
@@ -161,7 +168,9 @@ def _validate_golden_item(data: dict, path: Path) -> GoldenItem:
         if abs(total - 1.0) > WEIGHT_SUM_TOLERANCE:
             raise PipelineError(f"{ctx}: weights must sum to 1.0, got {total}")
 
-    return GoldenItem(id=item_id, golden_fact_ids=tuple(fact_ids), weights=weights)
+    return GoldenItem(
+        id=item_id, snapshot=snapshot, golden_fact_ids=tuple(fact_ids), weights=weights
+    )
 
 
 def load_golden_set(golden_dir: Path) -> GoldenSet:
