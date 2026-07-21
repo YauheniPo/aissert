@@ -1,5 +1,8 @@
 # CI per DESIGN.md §8: cheap checks on every PR. Canary eval (workflow_dispatch +
 # weekly, costs API money) is a separate workflow, added in milestone 4.
+# wiki-lint uses continue-on-error: informational only, never blocks a PR —
+# see CLAUDE.md's "Session-start, not commit-time" wiki maintenance policy
+# (commits/pushes are never blocked on wiki state).
 name: ci
 
 on:
@@ -29,3 +32,14 @@ jobs:
       - run: pip install pytest
       - name: Unit tests
         run: pytest tests/ -q
+
+  wiki-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Wiki structural lint (informational, non-blocking)
+        continue-on-error: true
+        run: python3 scripts/wiki/lint.py

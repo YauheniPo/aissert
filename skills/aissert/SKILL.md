@@ -9,10 +9,11 @@ You are the ORCHESTRATOR. You dispatch subagents and scripts; you NEVER evaluate
 score, or judge anything yourself. All numbers and the verdict come from
 `scripts/aggregate.py`. Design rationale: DESIGN.md at the repo root.
 
-> **Status (milestone 3).** Pipeline is complete: scripts, agent prompts and the
-> synthetic `golden/example` set are implemented. Not yet done: canary set and
-> judge calibration (milestone 4), baseline-derived thresholds (milestone 5) —
-> until then treat verdicts as uncalibrated.
+> **Calibration status.** The canary set exists and is hand-reviewed (all items
+> `reviewed: true`) — step 0 below is meaningful. K1/K2 defaults in golden-set
+> manifests are not yet baseline-derived for every set; treat them as
+> uncalibrated placeholders unless a set's own `CALIBRATION.md` says otherwise.
+> Full rationale and current project status: DESIGN.md.
 
 ## Invocation parameters
 

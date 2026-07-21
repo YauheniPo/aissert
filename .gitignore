@@ -220,3 +220,4 @@ __marimo__/
 eval-runs/
 *.local.json
 /dist/
+golden-local/

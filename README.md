@@ -11,6 +11,12 @@ Full rationale and architecture: [DESIGN.md](DESIGN.md).
 
 ## Install (local dev loop)
 
+**Never run this against a working tree that has a real (corporate) golden set
+in it, even gitignored.** A directory-source marketplace add copies the whole
+tree — `.gitignore` included — into `~/.claude/plugins/cache/...`. Real golden
+sets must live fully outside this repo's directory (e.g. `~/golden-sets/<skill>/`),
+never merely gitignored inside it. See `knowledge/domains/golden-and-canary.md`.
+
 ```
 /plugin marketplace add /path/to/aissert
 /plugin install aissert@aissert
@@ -98,10 +104,10 @@ straight to `main`, not through a PR.
 
 ## Status
 
-Milestones 1–3 done (contracts, deterministic aggregation, plugin scaffold,
-agent prompts, example set). Milestone 4: pilot ran end-to-end; canary draft
-awaits hand review. Then: baseline-derived thresholds — until calibration is
-done, verdicts are uncalibrated (DESIGN.md §10).
+Milestones 1–4 done (contracts, deterministic aggregation, plugin scaffold,
+agent prompts, example set, canary set built and hand-reviewed). Milestone 5:
+baseline-derived thresholds — until that calibration is done for a given
+golden set, its K1/K2 defaults are uncalibrated placeholders (DESIGN.md §10).
 
 ## Development
 

@@ -40,7 +40,8 @@ change contradicts DESIGN.md, update DESIGN.md in the same commit or stop and as
 - Agent prompts: `agents/*.md` (plugin-level subagents)
 - Contracts: `skills/aissert/references/`
 - Run artifacts: `eval-runs/` — gitignored, never commit
-- CI: `.github/workflows/ci.yml` (schema lint + pytest per PR; canary eval is
+- CI: `.github/workflows/ci.yml` (schema lint + pytest + wiki lint per PR — wiki
+  lint is `continue-on-error`, informational only, never blocks; canary eval is
   manual/scheduled only — it costs money)
 
 ## Local dev loop
@@ -48,6 +49,11 @@ change contradicts DESIGN.md, update DESIGN.md in the same commit or stop and as
 Add this repo directory as a local plugin marketplace, install `aissert` from it,
 re-install after changes. Test the slash command end-to-end against golden/example
 before touching real datasets.
+
+**Real datasets never go inside this repo's directory, gitignored or not** — a
+directory-source marketplace install copies the whole working tree, `.gitignore`
+included, into `~/.claude/plugins/cache/...`. Keep real golden sets fully outside
+the repo tree (see README.md's Install section).
 
 ## Wiki (knowledge/)
 

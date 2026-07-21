@@ -50,7 +50,7 @@ aissert/
 │   └── bump_version.py            # conventional-commit version bump, called by auto-release.yml
 ├── tests/                          # pytest: aggregate.py units + schema lint + wiki lint
 ├── .github/workflows/
-│   ├── ci.yml                      # schema-lint + tests, every PR/push to main
+│   ├── ci.yml                      # schema-lint + tests + wiki-lint (non-blocking), every PR/push to main
 │   ├── auto-release.yml            # push to main -> bump version -> commit + tag
 │   └── release.yml                 # tag push (aissert--v*) -> build zip -> GitHub Release
 ├── DESIGN.md                       # source of truth: why, architecture, milestones

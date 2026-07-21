@@ -60,24 +60,22 @@ python3.12 -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest tes
 
 ## CI (`.github/workflows/ci.yml`)
 
-Two jobs, on every PR and push to `main`:
+Three jobs, on every PR and push to `main`:
 
 - `schema-lint` — `pytest tests/test_plugin_schema.py -q`.
 - `tests` — `pytest tests/ -q` (everything, including wiki tests).
+- `wiki-lint` — `python3 scripts/wiki/lint.py`, step-level `continue-on-error:
+  true`. Runs on every PR so drift is visible early, but never blocks a merge:
+  the step shows failed in the job log, the job/check itself still reports
+  success. Consistent with commits/pushes never being blocked on wiki state
+  (see [judges-and-canary.md](../hotspots/judges-and-canary.md) for the
+  analogous reasoning on canary) — this is visibility, not a gate.
 
 **Not run on every PR** — canary eval and baseline runs. They call `claude
 -p` (real API cost) and are `workflow_dispatch` + weekly only. If your change
 needs canary verification (see
 [change-playbooks.md](../domains/change-playbooks.md)), do it locally/by hand
 before merging — CI will not catch a canary regression for you.
-
-There is currently no CI job for wiki lint — `python3 scripts/wiki/lint.py`
-runs at SessionStart locally, not as a merge gate (by design: commits/pushes
-are never blocked on wiki state, see
-[judges-and-canary.md](../hotspots/judges-and-canary.md) for the analogous
-reasoning on canary). If wiki drift becomes a recurring problem, adding
-`scripts/wiki/lint.py` as a third CI job is a reasonable, cheap addition — not
-done yet because there's no evidence of drift yet.
 
 ## Packaging & release
 

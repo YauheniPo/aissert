@@ -220,7 +220,10 @@ Full traceability: every number resolves to a raw output + evidence without reru
    and SKILL.md frontmatter, version sync between manifests.
 2. **pytest** (every PR): aggregate.py units on fixtures (all deterministic logic is
    unit-testable); validate_golden.py on golden/example.
-3. **Canary eval** (workflow_dispatch + weekly, NOT per-PR — cost): claude -p with
+3. **Wiki lint** (every PR, seconds, non-blocking): `scripts/wiki/lint.py` via
+   step-level `continue-on-error: true` — visible in the job log, never fails
+   the check or blocks a merge.
+4. **Canary eval** (workflow_dispatch + weekly, NOT per-PR — cost): claude -p with
    ANTHROPIC_API_KEY secret, report-only artifact.
 
 ## 9. Data boundary (hard rule)
@@ -232,6 +235,12 @@ The set hash in results.json links harness version to data version.
 
 Repo history note: repo may go public later — nothing corporate in any commit, ever,
 including temporary fixtures.
+
+Gitignore is not enough: a directory-source local plugin marketplace install
+(`/plugin marketplace add <path>`) copies the whole working tree — `.gitignore`
+included — into `~/.claude/plugins/cache/...`. Real sets must live fully outside
+this repo's directory, not merely gitignored inside it (confirmed 2026-07-21,
+see knowledge/domains/golden-and-canary.md).
 
 ## 10. Implementation milestones
 
