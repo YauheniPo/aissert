@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "description": "Judge regression set built from the milestone-4 pilot on golden/example (synthetic). Pre-filled with pilot judge verdicts; hand-review each item, correct 'expected', set reviewed: true.",
+  "min_agreement": 1.0
+}

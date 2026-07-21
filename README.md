@@ -44,12 +44,23 @@ python3 skills/aissert/scripts/validate_golden.py <set-dir>
 fixture. **No corporate data in this repo, ever** — real sets live in internal
 storage and are passed by path.
 
+## Canary (judge regression set)
+
+`canary/` freezes judge inputs with hand-labeled expected verdicts
+(contract: [skills/aissert/references/canary-schema.md](skills/aissert/references/canary-schema.md)).
+The orchestrator re-runs judges on them before every eval;
+`scripts/check_canary.py` compares. Divergence = invalid run.
+
+Items are drafted from pilot judge output with `reviewed: false` and are
+**refused by the checker until a human verifies each `expected` verdict and
+flips `reviewed: true`**. Borderline items are marked.
+
 ## Status
 
 Milestones 1–3 done (contracts, deterministic aggregation, plugin scaffold,
-agent prompts, example set). Pending: canary set + judge calibration, then
-baseline-derived thresholds — until then verdicts are uncalibrated
-(DESIGN.md §10).
+agent prompts, example set). Milestone 4: pilot ran end-to-end; canary draft
+awaits hand review. Then: baseline-derived thresholds — until calibration is
+done, verdicts are uncalibrated (DESIGN.md §10).
 
 ## Development
 

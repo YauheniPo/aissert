@@ -1,0 +1,191 @@
+"""Tests for check_canary.py — agreement math, reviewed gate, exit codes."""
+import json
+from pathlib import Path
+
+import pytest
+
+import check_canary
+from aggregate import EXIT_GATE_FAILED, EXIT_PASS, EXIT_PIPELINE_ERROR, PipelineError
+from check_canary import CanaryItem, compare_item, load_canary_set
+
+from test_aggregate import write_json
+
+
+def canary_item_payload(item_id, judge="precision", expected=None, reviewed=True,
+                        borderline=False):
+    id_key = "fact_id" if judge == "precision" else "golden_fact_id"
+    expected = expected or {"f1": "supported"}
+    return {
+        "id": item_id,
+        "judge": judge,
+        "borderline": borderline,
+        "reviewed": reviewed,
+        "source": {"note": "synthetic"},
+        "input": {"golden_facts": [{"id": "gf1", "text": "g"}],
+                  "extracted_facts": [{"id": "f1", "type": "t", "text": "e"}]},
+        "expected": {"verdicts": [{id_key: vid, "verdict": v} for vid, v in expected.items()]},
+    }
+
+
+def make_canary(tmp_path, items, min_agreement=1.0):
+    cdir = tmp_path / "canary"
+    write_json(cdir / "manifest.json",
+               {"schema_version": 1, "description": "test", "min_agreement": min_agreement})
+    for item in items:
+        write_json(cdir / "items" / f"{item['id']}.json", item)
+    return cdir
+
+
+def write_actual(vdir, item_id, verdicts, id_key="fact_id"):
+    write_json(vdir / f"{item_id}.json",
+               {"verdicts": [{id_key: vid, "verdict": v, "evidence": "e"}
+                             for vid, v in verdicts.items()]})
+
+
+# ------------------------------------------------------------------ loading
+
+
+def test_unreviewed_item_is_pipeline_error(tmp_path):
+    cdir = make_canary(tmp_path, [canary_item_payload("cn-001", reviewed=False)])
+    with pytest.raises(PipelineError, match="not hand-reviewed"):
+        load_canary_set(cdir)
+
+
+def test_bad_judge_kind_rejected(tmp_path):
+    payload = canary_item_payload("cn-001")
+    payload["judge"] = "vibes"
+    cdir = make_canary(tmp_path, [payload])
+    with pytest.raises(PipelineError, match="'judge'"):
+        load_canary_set(cdir)
+
+
+def test_recall_item_uses_golden_fact_id_and_enum(tmp_path):
+    payload = canary_item_payload("cn-001", judge="recall", expected={"gf1": "covered"})
+    cdir = make_canary(tmp_path, [payload])
+    _, items = load_canary_set(cdir)
+    assert items[0].expected == {"gf1": "covered"}
+
+
+def test_wrong_enum_for_judge_kind_rejected(tmp_path):
+    # 'supported' is an m1 value; invalid for a recall item
+    payload = canary_item_payload("cn-001", judge="recall", expected={"gf1": "supported"})
+    cdir = make_canary(tmp_path, [payload])
+    with pytest.raises(PipelineError, match="verdict must be one of"):
+        load_canary_set(cdir)
+
+
+def test_min_agreement_validated(tmp_path):
+    cdir = make_canary(tmp_path, [canary_item_payload("cn-001")], min_agreement=0)
+    with pytest.raises(PipelineError, match="min_agreement"):
+        load_canary_set(cdir)
+
+
+# ------------------------------------------------------------- compare_item
+
+
+def make_item(expected, judge="precision"):
+    return CanaryItem(id="cn-001", judge=judge, borderline=False, expected=expected)
+
+
+def test_compare_full_agreement():
+    item = make_item({"f1": "supported", "f2": "unsupported"})
+    actual = {"verdicts": [
+        {"fact_id": "f1", "verdict": "supported", "evidence": "e"},
+        {"fact_id": "f2", "verdict": "unsupported", "evidence": "e"},
+    ]}
+    assert compare_item(item, actual) == []
+
+
+def test_compare_reports_mismatch():
+    item = make_item({"f1": "supported"})
+    actual = {"verdicts": [{"fact_id": "f1", "verdict": "unsupported", "evidence": "e"}]}
+    mismatches = compare_item(item, actual)
+    assert len(mismatches) == 1
+    assert "expected supported, got unsupported" in mismatches[0]
+
+
+def test_compare_id_set_mismatch_is_pipeline_error():
+    item = make_item({"f1": "supported", "f2": "supported"})
+    actual = {"verdicts": [{"fact_id": "f1", "verdict": "supported", "evidence": "e"}]}
+    with pytest.raises(PipelineError, match="missing=\\['f2'\\]"):
+        compare_item(item, actual)
+
+
+# ------------------------------------------------------------------- main
+
+
+def test_main_pass(tmp_path, capsys):
+    cdir = make_canary(tmp_path, [
+        canary_item_payload("cn-001", expected={"f1": "supported", "f2": "unsupported"}),
+        canary_item_payload("cn-002", judge="recall", expected={"gf1": "covered"}),
+    ])
+    vdir = tmp_path / "actual"
+    write_actual(vdir, "cn-001", {"f1": "supported", "f2": "unsupported"})
+    write_actual(vdir, "cn-002", {"gf1": "covered"}, id_key="golden_fact_id")
+    code = check_canary.main(["--canary-set", str(cdir), "--verdicts-dir", str(vdir)])
+    assert code == EXIT_PASS
+    assert "agreement=1.0000" in capsys.readouterr().out
+
+
+def test_main_divergence_exit_1(tmp_path, capsys):
+    cdir = make_canary(tmp_path, [
+        canary_item_payload("cn-001", expected={"f1": "supported", "f2": "unsupported"}),
+    ])
+    vdir = tmp_path / "actual"
+    write_actual(vdir, "cn-001", {"f1": "supported", "f2": "supported"})
+    code = check_canary.main(["--canary-set", str(cdir), "--verdicts-dir", str(vdir)])
+    assert code == EXIT_GATE_FAILED
+    out, err = capsys.readouterr()
+    assert "MISMATCH cn-001" in out
+    assert "agreement=0.5000" in out
+    assert "DIVERGENCE" in err
+
+
+def test_main_agreement_threshold_from_manifest(tmp_path):
+    # 3 of 4 verdicts match = 0.75 >= 0.7 -> pass
+    cdir = make_canary(tmp_path, [
+        canary_item_payload("cn-001", expected={"f1": "supported", "f2": "unsupported",
+                                                "f3": "supported", "f4": "supported"}),
+    ], min_agreement=0.7)
+    vdir = tmp_path / "actual"
+    write_actual(vdir, "cn-001", {"f1": "supported", "f2": "supported",
+                                  "f3": "supported", "f4": "supported"})
+    code = check_canary.main(["--canary-set", str(cdir), "--verdicts-dir", str(vdir)])
+    assert code == EXIT_PASS
+
+
+def test_main_missing_actual_file_exit_2(tmp_path, capsys):
+    cdir = make_canary(tmp_path, [canary_item_payload("cn-001")])
+    code = check_canary.main(["--canary-set", str(cdir),
+                              "--verdicts-dir", str(tmp_path / "actual")])
+    assert code == EXIT_PIPELINE_ERROR
+    assert "missing judge outputs" in capsys.readouterr().err
+
+
+def test_main_unreviewed_exit_2(tmp_path, capsys):
+    cdir = make_canary(tmp_path, [canary_item_payload("cn-001", reviewed=False)])
+    vdir = tmp_path / "actual"
+    write_actual(vdir, "cn-001", {"f1": "supported"})
+    code = check_canary.main(["--canary-set", str(cdir), "--verdicts-dir", str(vdir)])
+    assert code == EXIT_PIPELINE_ERROR
+    assert "not hand-reviewed" in capsys.readouterr().err
+
+
+# ------------------------------------------------------ repo canary fixture
+
+
+def test_repo_canary_items_are_structurally_valid():
+    """Structural check that survives hand-review (does not assert reviewed flag)."""
+    items_dir = Path(__file__).resolve().parents[1] / "canary" / "items"
+    files = sorted(items_dir.glob("*.json"))
+    assert len(files) >= 10, "canary set should hold 10-15 items (DESIGN.md §7.3)"
+    for f in files:
+        data = json.loads(f.read_text(encoding="utf-8"))
+        assert data["id"] == f.stem
+        assert data["judge"] in ("precision", "recall")
+        assert isinstance(data["reviewed"], bool)
+        assert data["expected"]["verdicts"], f"{f.name}: empty expected verdicts"
+        assert data["input"]["golden_facts"] and data["input"]["extracted_facts"]
+    borderline = [f for f in files
+                  if json.loads(f.read_text(encoding="utf-8"))["borderline"]]
+    assert borderline, "canary must include deliberately borderline cases"

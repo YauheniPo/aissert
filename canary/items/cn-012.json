@@ -1,0 +1,139 @@
+{
+  "id": "cn-012",
+  "judge": "recall",
+  "borderline": true,
+  "reviewed": false,
+  "source": {
+    "golden_item": "gs-003",
+    "iteration": 2,
+    "note": "milestone-4 pilot 2026-07-21"
+  },
+  "input": {
+    "golden_facts": [
+      {
+        "id": "gf1",
+        "text": "Challenge-completion push notifications arrive twice on devices logged into two profiles"
+      },
+      {
+        "id": "gf2",
+        "text": "Single-profile devices receive exactly one notification"
+      },
+      {
+        "id": "gf3",
+        "text": "The duplicate reproduces 10 out of 10 times on build 4.0.0-b3"
+      },
+      {
+        "id": "gf4",
+        "text": "Killing the app or muting one profile does not prevent the duplicate"
+      },
+      {
+        "id": "gf5",
+        "text": "Earlier 3.x builds with the same dual-profile setup show a single notification"
+      },
+      {
+        "id": "gf6",
+        "text": "The defect is a 4.0 regression"
+      }
+    ],
+    "extracted_facts": [
+      {
+        "id": "f1",
+        "type": "expectation",
+        "text": "In the 4.0-beta build, push notifications for completed challenges arrive twice on devices where the user is logged into two profiles (personal + coach mode)"
+      },
+      {
+        "id": "f2",
+        "type": "other",
+        "text": "The bug is reported with a suggested priority of high"
+      },
+      {
+        "id": "f3",
+        "type": "other",
+        "text": "Double push notifications have historically caused uninstalls"
+      },
+      {
+        "id": "f4",
+        "type": "entity",
+        "text": "The affected app is the Meridian fitness app"
+      },
+      {
+        "id": "f5",
+        "type": "entity",
+        "text": "The affected build is 4.0.0-b3 (beta)"
+      },
+      {
+        "id": "f6",
+        "type": "expectation",
+        "text": "Earlier 3.x builds with the same dual-profile setup show a single notification"
+      },
+      {
+        "id": "f7",
+        "type": "expectation",
+        "text": "Both notification copies arrive within a second of each other"
+      },
+      {
+        "id": "f8",
+        "type": "expectation",
+        "text": "Both notification copies deep-link to the same challenge screen"
+      },
+      {
+        "id": "f9",
+        "type": "condition",
+        "text": "The issue occurs only on dual-profile devices"
+      },
+      {
+        "id": "f10",
+        "type": "expectation",
+        "text": "Single-profile devices receive exactly one notification"
+      },
+      {
+        "id": "f11",
+        "type": "other",
+        "text": "The reproduction rate is 10/10 on build 4.0.0-b3"
+      },
+      {
+        "id": "f12",
+        "type": "other",
+        "text": "No workaround was found"
+      },
+      {
+        "id": "f13",
+        "type": "expectation",
+        "text": "Killing the app does not stop the duplicate notifications"
+      },
+      {
+        "id": "f14",
+        "type": "expectation",
+        "text": "Muting one profile does not stop the duplicate notifications"
+      }
+    ]
+  },
+  "expected": {
+    "verdicts": [
+      {
+        "golden_fact_id": "gf1",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf2",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf3",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf4",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf5",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf6",
+        "verdict": "covered"
+      }
+    ]
+  }
+}

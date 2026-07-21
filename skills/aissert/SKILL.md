@@ -38,6 +38,12 @@ score, or judge anything yourself. All numbers and the verdict come from
 
 Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
 
+0. **Canary** (when a canary set exists for this golden set, contract:
+   `references/canary-schema.md`) — run both judges on every canary item's
+   frozen input, save each output to `<run_dir>/canary/<canary-item-id>.json`,
+   then run `scripts/check_canary.py --canary-set <dir> --verdicts-dir
+   <run_dir>/canary`. Non-zero exit = judges drifted, the whole run is invalid —
+   stop, report, do NOT proceed to evaluation.
 1. **Validate** — run `scripts/validate_golden.py <golden_set>`. Fail fast on
    non-zero exit. Record the printed set hash.
 2. **Generate** — per item × iteration: spawn a subagent with ONLY the target

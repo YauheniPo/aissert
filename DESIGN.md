@@ -5,10 +5,11 @@ datasets over N iterations, extracts atomic facts, and gates on precision/recall
 thresholds. Fact-level binary verdicts instead of holistic scores; all math is
 deterministic Python, never LLM.
 
-Status: design approved, milestones 1–3 implemented (contracts, aggregate.py + tests,
-plugin scaffold, schema-lint CI, agent prompts, validate_golden.py, run_target.py,
-synthetic golden/example). Next: milestone 4 (pilot, calibration, canary set).
-This document is the source of truth. If implementation needs to deviate, update this file in the same MR/PR.
+Status: design approved, milestones 1–4 in progress: 1–3 done (contracts,
+aggregate.py + tests, plugin scaffold, schema-lint CI, agent prompts, scripts,
+synthetic golden/example); milestone 4 pilot ran end-to-end, canary draft built
+from pilot verdicts — awaiting hand review (reviewed: false), judge calibration
+pending. This document is the source of truth. If implementation needs to deviate, update this file in the same MR/PR.
 
 ---
 
@@ -74,6 +75,7 @@ aissert/
 │   └── eval.md                    # thin slash-command wrapper over the skill
 ├── golden/
 │   └── example/                   # SYNTHETIC demo set only (doubles as CI fixture)
+├── canary/                        # judge regression set (references/canary-schema.md)
 ├── tests/                         # pytest: aggregate.py units + canary fixtures
 ├── .github/workflows/ci.yml
 └── README.md
@@ -186,9 +188,13 @@ Full traceability: every number resolves to a raw output + evidence without reru
 2. **Goodhart via metric asymmetry**: recall rewards fact-dumping; precision penalizes
    length. Report verbosity ratio as diagnostic even without a gate.
 3. **Model drift breaks trends**: record model id in results.json. Maintain a
-   **canary set**: 10–15 frozen (output + hand-labeled expected verdicts) pairs,
-   including deliberately borderline cases. Run before every eval; canary divergence
-   = invalid run, fix the rubric, not the skill. This is the judge's regression test.
+   **canary set**: 10–15 frozen judge inputs (golden facts + extracted facts) with
+   hand-labeled expected verdicts, including deliberately borderline cases. Facts
+   are frozen (not raw outputs): extraction is nondeterministic, so expected
+   verdicts can only be pinned to a frozen fact set — the extractor is calibrated
+   via meta-eval (§7.8) instead. Contract: references/canary-schema.md, checker:
+   check_canary.py. Run before every eval; canary divergence = invalid run, fix
+   the rubric, not the skill. This is the judges' regression test.
 4. **Borderline "supported" semantics** (paraphrase, granularity mismatch, partial
    overlap): calibrated via borderline canary examples, not longer instructions.
 5. **Premature blocking CI gate**: order is baseline run → derive K1/K2 from baseline

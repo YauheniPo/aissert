@@ -1,0 +1,127 @@
+{
+  "id": "cn-007",
+  "judge": "recall",
+  "borderline": true,
+  "reviewed": false,
+  "source": {
+    "golden_item": "gs-001",
+    "iteration": 1,
+    "note": "milestone-4 pilot 2026-07-21"
+  },
+  "input": {
+    "golden_facts": [
+      {
+        "id": "gf1",
+        "text": "The issue affects the Android app"
+      },
+      {
+        "id": "gf2",
+        "text": "The affected app version is 3.2.1"
+      },
+      {
+        "id": "gf3",
+        "text": "Email+password login hangs and ends with a 'request timed out' error"
+      },
+      {
+        "id": "gf4",
+        "text": "iOS is not affected"
+      },
+      {
+        "id": "gf5",
+        "text": "The issue appeared after updating from version 3.2.0"
+      },
+      {
+        "id": "gf6",
+        "text": "The issue reproduces on both wifi and mobile data"
+      },
+      {
+        "id": "gf7",
+        "text": "Google sign-in works, only email+password login is affected"
+      }
+    ],
+    "extracted_facts": [
+      {
+        "id": "f1",
+        "type": "expectation",
+        "text": "On the Android app version 3.2.1, email+password login hangs indefinitely (the spinner runs indefinitely after entering a password and tapping login)"
+      },
+      {
+        "id": "f2",
+        "type": "expectation",
+        "text": "Waiting on the hung email+password login eventually produces a \"request timed out\" error"
+      },
+      {
+        "id": "f3",
+        "type": "expectation",
+        "text": "\"Sign in with Google\" still works"
+      },
+      {
+        "id": "f4",
+        "type": "entity",
+        "text": "The affected app is the Meridian fitness app on Android"
+      },
+      {
+        "id": "f5",
+        "type": "condition",
+        "text": "The issue started after updating from version 3.2.0 to 3.2.1 and is absent in 3.2.0"
+      },
+      {
+        "id": "f6",
+        "type": "condition",
+        "text": "The issue reproduces on both Wi-Fi and mobile data"
+      },
+      {
+        "id": "f7",
+        "type": "condition",
+        "text": "The issue affects only email+password login"
+      },
+      {
+        "id": "f8",
+        "type": "condition",
+        "text": "The iPhone version of the app is unaffected"
+      },
+      {
+        "id": "f9",
+        "type": "action",
+        "text": "Reinstalling the app did not help"
+      },
+      {
+        "id": "f10",
+        "type": "action",
+        "text": "The workaround is to use the \"Sign in with Google\" button instead of email+password login"
+      }
+    ]
+  },
+  "expected": {
+    "verdicts": [
+      {
+        "golden_fact_id": "gf1",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf2",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf3",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf4",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf5",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf6",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf7",
+        "verdict": "covered"
+      }
+    ]
+  }
+}

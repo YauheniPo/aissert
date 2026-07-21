@@ -1,0 +1,122 @@
+{
+  "id": "cn-008",
+  "judge": "recall",
+  "borderline": false,
+  "reviewed": false,
+  "source": {
+    "golden_item": "gs-001",
+    "iteration": 2,
+    "note": "milestone-4 pilot 2026-07-21"
+  },
+  "input": {
+    "golden_facts": [
+      {
+        "id": "gf1",
+        "text": "The issue affects the Android app"
+      },
+      {
+        "id": "gf2",
+        "text": "The affected app version is 3.2.1"
+      },
+      {
+        "id": "gf3",
+        "text": "Email+password login hangs and ends with a 'request timed out' error"
+      },
+      {
+        "id": "gf4",
+        "text": "iOS is not affected"
+      },
+      {
+        "id": "gf5",
+        "text": "The issue appeared after updating from version 3.2.0"
+      },
+      {
+        "id": "gf6",
+        "text": "The issue reproduces on both wifi and mobile data"
+      },
+      {
+        "id": "gf7",
+        "text": "Google sign-in works, only email+password login is affected"
+      }
+    ],
+    "extracted_facts": [
+      {
+        "id": "f1",
+        "type": "expectation",
+        "text": "On the Meridian Android app version 3.2.1, after entering a password and tapping login, the loading spinner runs indefinitely"
+      },
+      {
+        "id": "f2",
+        "type": "expectation",
+        "text": "On the Meridian Android app version 3.2.1, the email+password login attempt eventually results in the app displaying 'request timed out'"
+      },
+      {
+        "id": "f3",
+        "type": "expectation",
+        "text": "Only email+password login is affected; 'Sign in with Google' works normally"
+      },
+      {
+        "id": "f4",
+        "type": "condition",
+        "text": "The login issue started after updating the app from version 3.2.0 (which worked) to 3.2.1"
+      },
+      {
+        "id": "f5",
+        "type": "entity",
+        "text": "The affected app is the Meridian fitness app on Android, version 3.2.1"
+      },
+      {
+        "id": "f6",
+        "type": "condition",
+        "text": "The issue was not reproduced on iOS (single data point: the reporter's wife's iPhone works fine)"
+      },
+      {
+        "id": "f7",
+        "type": "condition",
+        "text": "The issue occurs on both Wi-Fi and mobile data"
+      },
+      {
+        "id": "f8",
+        "type": "expectation",
+        "text": "Reinstalling the app did not resolve the issue"
+      },
+      {
+        "id": "f9",
+        "type": "action",
+        "text": "As a workaround, use the 'Sign in with Google' button instead of email+password login"
+      }
+    ]
+  },
+  "expected": {
+    "verdicts": [
+      {
+        "golden_fact_id": "gf1",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf2",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf3",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf4",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf5",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf6",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf7",
+        "verdict": "covered"
+      }
+    ]
+  }
+}

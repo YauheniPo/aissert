@@ -1,0 +1,116 @@
+{
+  "id": "cn-010",
+  "judge": "recall",
+  "borderline": true,
+  "reviewed": false,
+  "source": {
+    "golden_item": "gs-002",
+    "iteration": 2,
+    "note": "milestone-4 pilot 2026-07-21"
+  },
+  "input": {
+    "golden_facts": [
+      {
+        "id": "gf1",
+        "text": "Switching the app language from English to Spanish makes the History tab show 'No workouts yet'"
+      },
+      {
+        "id": "gf2",
+        "text": "Switching the language back to English restores the history display"
+      },
+      {
+        "id": "gf3",
+        "text": "The web dashboard shows the workout data correctly, so no data is deleted"
+      },
+      {
+        "id": "gf4",
+        "text": "The issue reproduces every time"
+      },
+      {
+        "id": "gf5",
+        "text": "The issue reproduces on at least two devices (Pixel 8 phone and Galaxy Tab tablet)"
+      }
+    ],
+    "extracted_facts": [
+      {
+        "id": "f1",
+        "type": "expectation",
+        "text": "In the Meridian fitness app, workout history disappears after switching the app language from English to Spanish"
+      },
+      {
+        "id": "f2",
+        "type": "expectation",
+        "text": "After the language change, the History tab shows \"No workouts yet\" despite months of existing workout data"
+      },
+      {
+        "id": "f3",
+        "type": "expectation",
+        "text": "The workout data is not deleted"
+      },
+      {
+        "id": "f4",
+        "type": "expectation",
+        "text": "Switching the app language back to English restores the workout history"
+      },
+      {
+        "id": "f5",
+        "type": "expectation",
+        "text": "The web dashboard shows the workout data correctly throughout"
+      },
+      {
+        "id": "f6",
+        "type": "entity",
+        "text": "The affected app is the Meridian fitness app on mobile"
+      },
+      {
+        "id": "f7",
+        "type": "condition",
+        "text": "The issue was reproduced on a Pixel 8 phone"
+      },
+      {
+        "id": "f8",
+        "type": "condition",
+        "text": "The issue was reproduced on a Galaxy Tab tablet"
+      },
+      {
+        "id": "f9",
+        "type": "condition",
+        "text": "The affected account is a Premium account"
+      },
+      {
+        "id": "f10",
+        "type": "condition",
+        "text": "The issue is reproducible every time"
+      },
+      {
+        "id": "f11",
+        "type": "other",
+        "text": "The issue is a display/retrieval issue only, since the underlying data is intact"
+      }
+    ]
+  },
+  "expected": {
+    "verdicts": [
+      {
+        "golden_fact_id": "gf1",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf2",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf3",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf4",
+        "verdict": "covered"
+      },
+      {
+        "golden_fact_id": "gf5",
+        "verdict": "covered"
+      }
+    ]
+  }
+}
