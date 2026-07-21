@@ -48,3 +48,46 @@ change contradicts DESIGN.md, update DESIGN.md in the same commit or stop and as
 Add this repo directory as a local plugin marketplace, install `aissert` from it,
 re-install after changes. Test the slash command end-to-end against golden/example
 before touching real datasets.
+
+## Wiki (knowledge/)
+
+This repo has a repo-local wiki under `knowledge/` — a compact navigation
+layer over the raw repository, not a replacement for it. `DESIGN.md`, this
+file, agent prompts, scripts, and `skills/aissert/references/*.md` remain
+authoritative; if a wiki page and the raw files disagree, fix the page.
+
+**Mandatory read order** for a fresh session: `knowledge/index.md` →
+`knowledge/status.md` → only the domain/hotspot pages relevant to the current
+task → the raw files those pages point at (`source_paths` in frontmatter).
+Prefer `python3 scripts/wiki/read_plan.py` to narrow which pages to read
+given the current changed files.
+
+**Maintenance workflow** — run it when `python3 scripts/wiki/changed.py`
+reports `significant_change: true`, or when asked for wiki lint/maintenance:
+
+1. `python3 scripts/wiki/lint.py` and `python3 scripts/wiki/changed.py`.
+2. Read only the pages flagged stale, broken, orphaned, or uncovered.
+3. Re-check the raw files referenced by those pages' `source_paths`.
+4. Update only the impacted pages; leave unaffected pages untouched.
+5. Refresh `knowledge/index.md`; append a dated entry to `knowledge/log.md`.
+6. Re-anchor `last_validated_commit` to a **fresh** `git rev-parse HEAD` in
+   every page you touch — never retype a SHA from memory or earlier context.
+7. Confirm `python3 scripts/wiki/lint.py` exits 0.
+
+**Session-start, not commit-time.** The `SessionStart` hook
+(`scripts/wiki/hook_session_start.py`, wired in `.claude/settings.json`)
+injects a maintenance action item into context when it finds structural
+breakage or `significant_change: true`. Do that maintenance **before**
+starting the user's task. Commits and pushes are never blocked on wiki
+state — the hook is fail-open (any error degrades to a minimal reminder).
+Stale pages alone (`source_paths` changed since `last_validated_commit`) are
+informational, not an action item — re-check one only when your current task
+touches its area; don't blanket re-anchor `last_validated_commit` just to
+silence the flag, that's churn, not validation.
+
+**Anti-bloat:** no large code excerpts in wiki pages — file paths, summaries,
+invariants, and cross-links instead. `knowledge/queries/` is for reusable
+lessons captured via `/wiki-capture`, never a chat-history dump.
+
+Map: `knowledge/index.md` · rules `knowledge/meta/lint-rules.md` · frontmatter
+contract `knowledge/meta/page-template.md`.

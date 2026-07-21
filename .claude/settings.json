@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/wiki/hook_session_start.py 2>/dev/null || true",
+            "timeout": 15000,
+            "statusMessage": "Loading LLM wiki read-plan"
+          }
+        ]
+      }
+    ]
+  }
+}
