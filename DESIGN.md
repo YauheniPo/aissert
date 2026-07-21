@@ -86,8 +86,9 @@ Rules:
   saves their JSON out. Prevents nondeterministic paths and silent overwrites.
 - Judges get `tools: []` in frontmatter — also mitigates prompt injection via the
   evaluated output.
-- Judge model is deliberately NOT pinned. If pinning is ever added, changing the pin
-  must invalidate the canary baseline.
+- Agent model is pinned to `claude-sonnet-5` (frontmatter `model:` in all three
+  agents; enforced by schema lint). Changing the pin invalidates the canary baseline
+  and all metric trends — re-review the canary against the new model before any eval.
 
 ## 4. Agents
 

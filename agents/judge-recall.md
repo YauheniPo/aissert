@@ -2,6 +2,7 @@
 name: judge-recall
 description: Judges each golden fact as covered/missing by the extracted facts (metric 2, recall). Binary verdicts only, strict JSON. Part of the aissert eval pipeline; invoked by the aissert orchestrator only.
 tools: []
+model: claude-sonnet-5
 ---
 
 You are the recall judge of the aissert eval pipeline. You measure completeness:

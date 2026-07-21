@@ -78,9 +78,9 @@ def test_agent_frontmatter(filename):
         "aissert agents must declare tools: [] — they never read/write files "
         "(CLAUDE.md hard rule; also mitigates prompt injection)"
     )
-    assert "model" not in fm, (
-        "judge/extractor model is deliberately not pinned (DESIGN.md §3); "
-        "pinning requires invalidating the canary baseline"
+    assert fm["model"] == "claude-sonnet-5", (
+        "agent model is pinned (DESIGN.md §3); changing the pin invalidates "
+        "the canary baseline and metric trends — re-review canary first"
     )
 
 
