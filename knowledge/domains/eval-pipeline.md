@@ -15,7 +15,7 @@ related_pages:
   - ../hotspots/aggregate-py.md
   - ../hotspots/judges-and-canary.md
   - golden-and-canary.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
 ---
 
 ## Why not a holistic 0-100 score
@@ -47,6 +47,12 @@ verdicts/*-m1.json   verdicts/*-m2.json
    results.json + exit code (0 pass / 1 gate failed / 2 pipeline error)
 ```
 
+Generate and extract are each dispatched **in parallel** across every
+item x iteration (independent, clean-context spawns — nothing to isolate them
+from), same as the judge step. A prior real run dispatched generate/extract
+sequentially instead (SKILL.md didn't say otherwise at the time) and lost
+most of its wall-clock to that; the rule is now explicit in SKILL.md steps 2-3.
+
 This repeats `item x iterations` times per `/aissert:eval` call. Golden facts
 are extracted **once**, at golden-set creation time, human-reviewed, and
 never re-extracted at eval time — see
@@ -77,9 +83,9 @@ Single place that knows the whole flow. Hard discipline: it dispatches
 subagents and scripts, it **never evaluates anything itself** — every number
 and the verdict come from `aggregate.py`. Steps: 0. canary check → 1.
 validate golden set → 2. generate (clean-context subagent per item x
-iteration) → 3. extract → 4. judge (parallel) → 5. aggregate. Read the file
-directly for the exact per-step contract details — this page is a map, not a
-restatement.
+iteration, dispatched in parallel) → 3. extract (parallel per output) → 4.
+judge (parallel) → 5. aggregate. Read the file directly for the exact
+per-step contract details — this page is a map, not a restatement.
 
 `commands/eval.md` is a thin wrapper passing `$ARGUMENTS` through; touch it
 only if the slash-command signature itself changes.

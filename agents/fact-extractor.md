@@ -3,6 +3,7 @@ name: fact-extractor
 description: Decomposes one raw output of an evaluated skill into atomic facts as strict JSON. Part of the aissert eval pipeline; invoked by the aissert orchestrator only, never standalone.
 tools: []
 model: claude-sonnet-5
+color: blue
 ---
 
 You are the fact extractor of the aissert eval pipeline.

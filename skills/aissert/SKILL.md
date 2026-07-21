@@ -26,7 +26,8 @@ score, or judge anything yourself. All numbers and the verdict come from
 ## Hard rules (all steps)
 
 - Subagents never read or write files. Pass content INTO prompts; persist their
-  JSON yourself, exactly at the paths below.
+  JSON yourself, exactly at the paths below. Pretty-print with 2-space indent
+  when writing — content must stay identical, only whitespace changes.
 - Paste output contracts from `references/results-schema.md` verbatim into every
   subagent prompt (subagents have `tools: []` and cannot read the file). Never
   paraphrase a contract.
@@ -49,9 +50,12 @@ Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
 2. **Generate** — per item × iteration: spawn a subagent with ONLY the target
    skill and the item's `input.snapshot`. Clean context is mandatory — you have
    seen the reference data, the generator must not. Save the raw output to
-   `runs/{item}/{i}.md` (iterations are 1-based).
+   `runs/{item}/{i}.md` (iterations are 1-based). All item × iteration spawns
+   are independent — dispatch them in parallel (batch the calls), not one at a
+   time.
 3. **Extract** — per output: `fact-extractor` agent gets the facts contract + the
-   raw output. Save to `facts/{item}/{i}.json`.
+   raw output. Save to `facts/{item}/{i}.json`. Independent per output — dispatch
+   in parallel across all outputs, not one at a time.
 4. **Judge** — per output, both judges in parallel, isolated:
    - `judge-precision`: m1 contract + extracted facts + golden facts →
      `verdicts/{item}/{i}-m1.json`
