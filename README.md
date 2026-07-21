@@ -18,6 +18,17 @@ Full rationale and architecture: [DESIGN.md](DESIGN.md).
 
 After editing agents or manifests: `/reload-plugins`. Skill edits apply immediately.
 
+Alternative for a single session, no persistent install (CLI only):
+
+```
+claude --plugin-dir /path/to/aissert
+```
+
+Loads the plugin fresh every session start — picks up any edit automatically,
+nothing to reinstall. Doesn't work for Claude Desktop, which has no
+`--plugin-dir` flag; Desktop needs the packaged zip (see Packaging below) or
+the marketplace install above.
+
 ## Usage
 
 ```
@@ -54,6 +65,36 @@ The orchestrator re-runs judges on them before every eval;
 Items are drafted from pilot judge output with `reviewed: false` and are
 **refused by the checker until a human verifies each `expected` verdict and
 flips `reviewed: true`**. Borderline items are marked.
+
+## Packaging & releases
+
+Build a distributable plugin zip (for Claude Desktop's "Upload local plugin",
+or any offline install):
+
+```
+python3 scripts/build_plugin_zip.py            # -> dist/aissert-<version>.zip
+python3 scripts/build_plugin_zip.py --output /custom/path.zip
+```
+
+Allowlist, not a denylist: only `.claude-plugin/`, `agents/`, `skills/`,
+`commands/`, `golden/example/`, `canary/`, `README.md`, `LICENSE` — every
+other repo dir (`tests/`, `knowledge/`, `scripts/`, `.venv/`, `golden-local/`,
+...) is excluded by construction, so a new dev file never ships by accident.
+Fails (exit 2) if `plugin.json` and `marketplace.json` versions disagree, or
+if an allowlisted path is missing.
+
+Releases are fully automatic on every push to `main`:
+
+- `auto-release.yml` reads conventional-commit subjects since the last
+  `aissert--v*` tag, picks a bump level (`feat!:`/`type!:` → major, `feat:` →
+  minor, `fix:` → patch, nothing else → no release), bumps both manifest
+  files, commits, and pushes a matching tag.
+- That tag push triggers `release.yml`, which runs `build_plugin_zip.py` and
+  publishes the zip as a GitHub Release asset.
+
+Requires `main` to accept direct pushes from the default `GITHUB_TOKEN`
+(no branch protection blocking the Actions bot) — the bump commit is pushed
+straight to `main`, not through a PR.
 
 ## Status
 

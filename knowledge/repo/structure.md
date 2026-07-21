@@ -17,7 +17,7 @@ related_pages:
   - ../index.md
   - ../domains/eval-pipeline.md
   - build-test-and-ci.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
 ---
 
 ```
@@ -44,9 +44,15 @@ aissert/
 ├── golden/example/               # synthetic demo set, doubles as CI fixture
 ├── canary/                       # judge regression set — tests judges, NOT the skill
 ├── knowledge/                     # this wiki
-├── scripts/wiki/                  # wiki tooling (git diff, lint, significant-change, read-plan)
+├── scripts/
+│   ├── wiki/                      # wiki tooling (git diff, lint, significant-change, read-plan)
+│   ├── build_plugin_zip.py        # packages the plugin into dist/aissert-<version>.zip
+│   └── bump_version.py            # conventional-commit version bump, called by auto-release.yml
 ├── tests/                          # pytest: aggregate.py units + schema lint + wiki lint
-├── .github/workflows/ci.yml
+├── .github/workflows/
+│   ├── ci.yml                      # schema-lint + tests, every PR/push to main
+│   ├── auto-release.yml            # push to main -> bump version -> commit + tag
+│   └── release.yml                 # tag push (aissert--v*) -> build zip -> GitHub Release
 ├── DESIGN.md                       # source of truth: why, architecture, milestones
 ├── CLAUDE.md                       # hard rules for agents working in this repo
 └── README.md                       # quickstart
@@ -54,6 +60,11 @@ aissert/
 
 `eval-runs/` — run artifacts, gitignored, appears locally after
 `/aissert:eval`. Never committed.
+
+`golden-local/` — same idea as `eval-runs/`, for real/corporate golden sets a
+developer is testing against locally: gitignored, but see
+[golden-and-canary.md](../domains/golden-and-canary.md) for why gitignore
+alone isn't sufficient and a path fully outside the repo is the safer default.
 
 ## Reading order for a first pass
 

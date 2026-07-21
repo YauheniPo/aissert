@@ -2,11 +2,16 @@
 """Package the aissert plugin into a distributable zip.
 
 Reads the version from .claude-plugin/plugin.json, checks it matches the
-plugin entry in .claude-plugin/marketplace.json, and zips the repo excluding
-VCS/dev/corporate-data artifacts (see EXCLUDE_DIRS/EXCLUDE_SUFFIXES below —
-golden-local/ in particular must never ship, per DESIGN.md §9).
+plugin entry in .claude-plugin/marketplace.json, and zips only what the
+plugin needs at runtime (INCLUDE_PATHS below) — an allowlist, not a denylist:
+dev-only content (tests/, knowledge/ wiki, scripts/wiki/, CLAUDE.md,
+DESIGN.md, .git*, .venv, .idea) and anything outside INCLUDE_PATHS is
+excluded by construction, so a new dev file added to the repo never ships by
+accident. golden-local/ (real/corporate golden sets, see DESIGN.md §9) is
+never in this list.
 
-Exit codes: 0 = zip written, 2 = version mismatch or missing manifest.
+Exit codes: 0 = zip written, 2 = version mismatch, missing manifest, or an
+INCLUDE_PATHS entry that doesn't exist.
 """
 from __future__ import annotations
 
@@ -18,17 +23,19 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-EXCLUDE_DIRS = {
-    ".git",
-    ".venv",
-    ".idea",
-    ".github",
-    ".pytest_cache",
-    "__pycache__",
-    "eval-runs",
-    "golden-local",
-    "dist",
-}
+# Everything the plugin needs to load and run. Add here explicitly if the
+# plugin gains a new runtime-required directory — do not widen this by
+# switching back to an exclude-list.
+INCLUDE_PATHS = [
+    ".claude-plugin",
+    "agents",
+    "skills",
+    "commands",
+    "golden/example",
+    "canary",
+    "README.md",
+    "LICENSE",
+]
 EXCLUDE_SUFFIXES = {".pyc"}
 EXCLUDE_NAMES = {".DS_Store"}
 
@@ -51,17 +58,19 @@ def load_versions() -> tuple[str, str]:
 
 
 def iter_files(root: Path):
-    for path in sorted(root.rglob("*")):
-        if path.is_dir():
-            continue
-        if EXCLUDE_NAMES & {path.name}:
-            continue
-        if path.suffix in EXCLUDE_SUFFIXES:
-            continue
-        rel_parts = path.relative_to(root).parts
-        if EXCLUDE_DIRS & set(rel_parts[:-1]):
-            continue
-        yield path
+    for rel in INCLUDE_PATHS:
+        base = root / rel
+        if not base.exists():
+            raise FileNotFoundError(f"INCLUDE_PATHS entry does not exist: {rel}")
+        paths = sorted(base.rglob("*")) if base.is_dir() else [base]
+        for path in paths:
+            if path.is_dir():
+                continue
+            if path.name in EXCLUDE_NAMES:
+                continue
+            if path.suffix in EXCLUDE_SUFFIXES:
+                continue
+            yield path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -91,9 +100,13 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output or REPO_ROOT / "dist" / f"aissert-{plugin_version}.zip"
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zf:
-        for path in iter_files(REPO_ROOT):
-            zf.write(path, path.relative_to(REPO_ROOT))
+    try:
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in iter_files(REPO_ROOT):
+                zf.write(path, path.relative_to(REPO_ROOT))
+    except FileNotFoundError as e:
+        print(f"build_plugin_zip: {e}", file=sys.stderr)
+        return 2
 
     print(f"version: {plugin_version}")
     print(f"output: {output}")

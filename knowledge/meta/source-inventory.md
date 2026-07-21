@@ -16,7 +16,7 @@ source_paths:
 related_pages:
   - ../index.md
   - lint-rules.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
 ---
 
 Coverage = union of every page's `source_paths`. A high-signal path (see
@@ -39,7 +39,8 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `golden/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md) |
 | `canary/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `tests/` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
-| `.github/workflows/ci.yml` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `.github/workflows/ci.yml`, `auto-release.yml`, `release.yml` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `scripts/build_plugin_zip.py`, `scripts/bump_version.py` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/wiki/` | [lint-rules.md](lint-rules.md), this page |
 
 Not covered by design, and that's fine: `eval-runs/` (gitignored run

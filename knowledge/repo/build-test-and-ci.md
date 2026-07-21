@@ -5,12 +5,16 @@ summary: Local dev loop for the plugin, pytest invocation, and what GitHub Actio
 source_paths:
   - tests
   - .github/workflows/ci.yml
+  - .github/workflows/auto-release.yml
+  - .github/workflows/release.yml
+  - scripts/build_plugin_zip.py
+  - scripts/bump_version.py
   - README.md
 related_pages:
   - ../index.md
   - ../hotspots/aggregate-py.md
   - ../domains/change-playbooks.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
 ---
 
 ## Local dev loop (plugin)
@@ -74,3 +78,31 @@ are never blocked on wiki state, see
 reasoning on canary). If wiki drift becomes a recurring problem, adding
 `scripts/wiki/lint.py` as a third CI job is a reasonable, cheap addition — not
 done yet because there's no evidence of drift yet.
+
+## Packaging & release
+
+`scripts/build_plugin_zip.py` zips the plugin via an **allowlist**
+(`.claude-plugin/`, `agents/`, `skills/`, `commands/`, `golden/example/`,
+`canary/`, `README.md`, `LICENSE`), not a denylist — a new dev file
+(`tests/`, `knowledge/`, `scripts/wiki/`, ...) never ships by accident, and
+`golden-local/` structurally can't be in the zip since it's not on the list.
+Fails (exit 2) on a `plugin.json`/`marketplace.json` version mismatch or a
+missing allowlisted path. Needed for Claude Desktop's "Upload local plugin"
+(no `--plugin-dir` equivalent there) and any offline install.
+
+Releases are automatic, triggered off `main`, no manual version editing:
+
+1. `auto-release.yml` (push to `main`) — `scripts/bump_version.py` reads
+   conventional-commit subjects since the last `aissert--v*` tag, picks one
+   bump level for the whole range (`type!:` → major, `feat:` → minor,
+   `fix:` → patch, else → exit 3, no release), writes both manifests, commits,
+   tags, pushes. Guards against re-triggering itself on the bump commit by
+   checking the commit message prefix (`chore(release):`) before running.
+2. `release.yml` (tag push matching `aissert--v*`) — builds the zip, checks
+   the tag matches `plugin.json`'s version, publishes it as a GitHub Release
+   asset.
+
+Requires `main` to accept direct pushes from the default `GITHUB_TOKEN` —
+the bump commit goes straight to `main`, not through a PR. See
+[golden-and-canary.md](../domains/golden-and-canary.md) for why the zip
+allowlist matters for the corporate-data boundary too, not just tidiness.
