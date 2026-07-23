@@ -80,6 +80,15 @@ def test_min_agreement_validated(tmp_path):
         load_canary_set(cdir)
 
 
+def test_canary_manifest_schema_version_required(tmp_path):
+    cdir = make_canary(tmp_path, [canary_item_payload("cn-001")])
+    manifest = json.loads((cdir / "manifest.json").read_text())
+    manifest["schema_version"] = 2
+    write_json(cdir / "manifest.json", manifest)
+    with pytest.raises(PipelineError, match="schema_version"):
+        load_canary_set(cdir)
+
+
 # ------------------------------------------------------------- compare_item
 
 

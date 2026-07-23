@@ -63,6 +63,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.iterations < 1:
             raise PipelineError(f"--iterations must be >= 1, got {args.iterations}")
         golden = load_golden_set(args.golden_set)
+        if golden.target_skill != args.target_skill:
+            raise PipelineError(
+                f"target_skill mismatch: manifest has {golden.target_skill!r}, "
+                f"command requested {args.target_skill!r}"
+            )
     except PipelineError as e:
         print(f"run_target: {e}", file=sys.stderr)
         return EXIT_PIPELINE_ERROR

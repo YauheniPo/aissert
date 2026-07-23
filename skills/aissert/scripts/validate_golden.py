@@ -21,10 +21,20 @@ def main(argv: list[str] | None = None) -> int:
         description="Validate a golden set directory against golden-set-schema.md."
     )
     parser.add_argument("golden_set", type=Path, help="golden set directory")
+    parser.add_argument(
+        "--target-skill",
+        default=None,
+        help="expected manifest target_skill; catches passing a set for the wrong skill",
+    )
     args = parser.parse_args(argv)
 
     try:
         golden = load_golden_set(args.golden_set)
+        if args.target_skill is not None and golden.target_skill != args.target_skill:
+            raise PipelineError(
+                f"target_skill mismatch: manifest has {golden.target_skill!r}, "
+                f"command requested {args.target_skill!r}"
+            )
     except PipelineError as e:
         print(f"validate_golden: invalid golden set: {e}", file=sys.stderr)
         return EXIT_PIPELINE_ERROR

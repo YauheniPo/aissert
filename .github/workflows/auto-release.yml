@@ -1,8 +1,9 @@
 # Auto-bump per merge to main: scripts/bump_version.py picks the bump level
-# from conventional commit subjects since the last aissert--v* tag (excluding
-# snapshot tags with branch names), commits the version bump, and pushes a
-# matching release tag. That tag push triggers release.yml, which builds the
-# zip and publishes the GitHub Release.
+# from conventional commit subjects since the last stable aissert--vX.Y.Z tag,
+# commits the version bump, and pushes a
+# matching release tag. The same workflow builds the plugin zip and publishes
+# the GitHub Release; pushes made with GITHUB_TOKEN do not trigger follow-up
+# push workflows, so release.yml is only for manually pushed stable tags.
 #
 # Guard: the bump commit itself starts with "chore(release):" — the job
 # condition below skips re-running on that push, so the bump commit can't
@@ -19,11 +20,15 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: auto-release-main
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
-  bump-and-tag:
+  bump-tag-and-release:
     if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
     runs-on: ubuntu-latest
     steps:
@@ -54,9 +59,26 @@ jobs:
 
       - name: Commit bump and tag
         if: steps.bump.outputs.should_release == 'true'
+        id: publish_tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -am "chore(release): bump version to ${{ steps.bump.outputs.new_version }}"
-          git tag "aissert--v${{ steps.bump.outputs.new_version }}"
-          git push origin main --follow-tags
+          tag_name="aissert--v${{ steps.bump.outputs.new_version }}"
+          git tag -a "${tag_name}" -m "${tag_name}"
+          git push origin main "${tag_name}"
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Build plugin zip
+        if: steps.bump.outputs.should_release == 'true'
+        run: python3 scripts/build_plugin_zip.py
+
+      - name: Create GitHub release
+        if: steps.bump.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.publish_tag.outputs.tag_name }}" dist/*.zip \
+            --title "${{ steps.publish_tag.outputs.tag_name }}" \
+            --generate-notes \
+            --verify-tag

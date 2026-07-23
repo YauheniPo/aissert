@@ -24,6 +24,20 @@ def test_validate_golden_ok(tmp_path, capsys):
     assert "items: 1, golden facts: 3" in out
 
 
+def test_validate_golden_target_skill_match(tmp_path):
+    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 3)])
+    assert validate_golden.main([str(gdir), "--target-skill", "demo-skill"]) == EXIT_PASS
+
+
+def test_validate_golden_target_skill_mismatch_exit_2(tmp_path, capsys):
+    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 3)])
+    assert (
+        validate_golden.main([str(gdir), "--target-skill", "other-skill"])
+        == EXIT_PIPELINE_ERROR
+    )
+    assert "target_skill mismatch" in capsys.readouterr().err
+
+
 def test_validate_golden_invalid_exit_2(tmp_path, capsys):
     gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 3)])
     write_json(gdir / "items" / "gs-002.json", {"id": "gs-002"})
@@ -83,6 +97,18 @@ def test_run_target_generates_all(tmp_path, capsys):
     assert outputs == ["runs/gs-001/1.md", "runs/gs-001/2.md",
                        "runs/gs-002/1.md", "runs/gs-002/2.md"]
     assert "generated=4" in capsys.readouterr().out
+
+
+def test_run_target_rejects_wrong_target_skill(tmp_path, capsys):
+    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2)])
+    cmd = fake_claude(tmp_path, 'echo "should not run"')
+    code = run_target.main([
+        "--golden-set", str(gdir), "--run-dir", str(tmp_path / "run"),
+        "--target-skill", "other-skill", "--iterations", "1", "--claude-cmd", cmd,
+    ])
+    assert code == EXIT_PIPELINE_ERROR
+    assert "target_skill mismatch" in capsys.readouterr().err
+    assert not (tmp_path / "run").exists()
 
 
 def test_run_target_resume_skips_existing(tmp_path, capsys):

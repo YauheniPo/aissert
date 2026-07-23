@@ -22,6 +22,7 @@ from aggregate import (
     M1_VERDICTS,
     M2_VERDICTS,
     PipelineError,
+    SCHEMA_VERSION,
     _load_json,
     _require_str,
 )
@@ -87,6 +88,11 @@ def load_canary_item(path: Path) -> CanaryItem:
 
 def load_canary_set(canary_dir: Path) -> tuple[float, list[CanaryItem]]:
     manifest = _load_json(canary_dir / "manifest.json", "canary manifest")
+    if manifest.get("schema_version") != SCHEMA_VERSION:
+        raise PipelineError(
+            f"canary manifest: schema_version must be {SCHEMA_VERSION}, "
+            f"got {manifest.get('schema_version')!r}"
+        )
     min_agreement = manifest.get("min_agreement")
     if not isinstance(min_agreement, (int, float)) or isinstance(min_agreement, bool) \
             or not 0 < min_agreement <= 1:

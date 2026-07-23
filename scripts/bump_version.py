@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bump plugin.json/marketplace.json version from conventional commits.
 
-Scans commit subjects between the last `aissert--v*` tag (or repo start, if
-none exists) and HEAD, picks ONE bump level for the whole range:
+Scans commit subjects between the last stable `aissert--vX.Y.Z` tag (or repo
+start, if none exists) and HEAD, picks ONE bump level for the whole range:
 
   - subject matches `type(scope)!:` (e.g. `feat!:`) -> major
   - else any `feat:`/`feat(scope):` subject -> minor

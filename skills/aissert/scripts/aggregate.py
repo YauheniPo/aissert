@@ -3,7 +3,7 @@
 
 Reads fact-extractor and judge outputs from an eval-run directory, computes
 precision (m1) and recall (m2) per run, aggregates across iterations, applies
-the k1/k2 gates and writes results.json.
+the k1/k2 gates and writes results.json plus report.md.
 
 All scoring math, aggregation and verdicts live here — never in an LLM.
 
@@ -11,8 +11,6 @@ Contracts: skills/aissert/references/golden-set-schema.md and
 skills/aissert/references/results-schema.md.
 
 Exit codes: 0 = gate passed, 1 = gate failed, 2 = pipeline/infra error.
-
-report.md generation is a later milestone (DESIGN.md §10).
 """
 from __future__ import annotations
 
@@ -54,6 +52,7 @@ class GoldenSet:
     path: Path
     target_skill: str
     set_version: str
+    owner: str
     defaults_k1: float
     defaults_k2: float
     items: tuple[GoldenItem, ...]
@@ -176,8 +175,14 @@ def _validate_golden_item(data: dict, path: Path) -> GoldenItem:
 def load_golden_set(golden_dir: Path) -> GoldenSet:
     manifest = _load_json(golden_dir / "manifest.json", "golden set manifest")
     ctx = "golden set manifest"
+    if manifest.get("schema_version") != SCHEMA_VERSION:
+        raise PipelineError(
+            f"{ctx}: schema_version must be {SCHEMA_VERSION}, "
+            f"got {manifest.get('schema_version')!r}"
+        )
     target_skill = _require_str(manifest, "target_skill", ctx)
     set_version = _require_str(manifest, "set_version", ctx)
+    owner = _require_str(manifest, "owner", ctx)
     defaults = manifest.get("defaults")
     if not isinstance(defaults, dict):
         raise PipelineError(f"{ctx}: 'defaults' must be an object with k1/k2")
@@ -202,6 +207,7 @@ def load_golden_set(golden_dir: Path) -> GoldenSet:
         path=golden_dir,
         target_skill=target_skill,
         set_version=set_version,
+        owner=owner,
         defaults_k1=k1,
         defaults_k2=k2,
         items=tuple(items),
@@ -463,6 +469,7 @@ def build_results(
             "path": str(golden.path),
             "hash": golden.hash,
             "set_version": golden.set_version,
+            "owner": golden.owner,
         },
         "model_id": model_id,
         "iterations": iterations,
@@ -491,6 +498,53 @@ def build_results(
     }
 
 
+def build_report(results: dict) -> str:
+    """Build a compact Markdown summary for humans; results.json remains canonical."""
+    lines = [
+        "# aissert evaluation report",
+        "",
+        f"Verdict: **{results['verdict'].upper()}**",
+        f"Target skill: `{results['target_skill']}`",
+        f"Golden set: `{results['golden_set']['path']}`",
+        f"Golden hash: `{results['golden_set']['hash']}`",
+        f"Owner: `{results['golden_set']['owner']}`",
+        f"Iterations: {results['iterations']}",
+        "",
+        "## Gates",
+        "",
+        "| Metric | Mean | Stddev | Threshold | Result |",
+        "|---|---:|---:|---:|---|",
+    ]
+    for metric in ("m1", "m2"):
+        gate = results["gates"][metric]
+        stats = results["summary"][metric]
+        status = "pass" if gate["pass"] else "fail"
+        lines.append(
+            f"| {metric} | {gate['mean']:.4f} | {stats['stddev']:.4f} | "
+            f"{gate['threshold']:.4f} | {status} |"
+        )
+    lines.extend(
+        [
+            "",
+            f"Verbosity ratio mean: {results['summary']['verbosity_ratio_mean']:.4f}",
+            "",
+            "## Runs",
+            "",
+            "| Item | Iteration | m1 | m2 | Extracted | Golden | Verbosity |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for run in results["runs"]:
+        lines.append(
+            f"| {run['item_id']} | {run['iteration']} | "
+            f"{run['m1']['value']:.4f} | {run['m2']['value']:.4f} | "
+            f"{run['m1']['total_extracted']} | {run['m2']['total_golden']} | "
+            f"{run['verbosity_ratio']:.4f} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Aggregate aissert eval-run artifacts into results.json and a gate exit code."
@@ -512,6 +566,8 @@ def main(argv: list[str] | None = None) -> int:
         results = build_results(golden, runs, k1, k2, source, args.iterations, args.model_id)
         results_path = args.run_dir / "results.json"
         results_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+        report_path = args.run_dir / "report.md"
+        report_path.write_text(build_report(results), encoding="utf-8")
     except PipelineError as e:
         print(f"aggregate: pipeline error: {e}", file=sys.stderr)
         return EXIT_PIPELINE_ERROR
@@ -525,6 +581,7 @@ def main(argv: list[str] | None = None) -> int:
             f"threshold={gate['threshold']:.2f} -> {'ok' if gate['pass'] else 'FAIL'}"
         )
     print(f"results: {results_path}")
+    print(f"report: {report_path}")
     return EXIT_PASS if results["verdict"] == "pass" else EXIT_GATE_FAILED
 
 

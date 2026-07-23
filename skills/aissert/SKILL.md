@@ -46,8 +46,11 @@ Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
    then run `scripts/check_canary.py --canary-set <dir> --verdicts-dir
    <run_dir>/canary`. Non-zero exit = judges drifted, the whole run is invalid —
    stop, report, do NOT proceed to evaluation.
-1. **Validate** — run `scripts/validate_golden.py <golden_set>`. Fail fast on
-   non-zero exit. Record the printed set hash.
+1. **Validate** — run
+   `scripts/validate_golden.py <golden_set> --target-skill <target_skill>`.
+   Fail fast on non-zero exit. This verifies the golden-set schema and catches
+   using a dataset for the wrong skill before any LLM calls. Record the printed
+   set hash.
 2. **Generate** — per item × iteration: spawn a subagent with ONLY the target
    skill and the item's `input.snapshot`. Clean context is mandatory — you have
    seen the reference data, the generator must not. Save the raw output to
