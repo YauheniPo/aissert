@@ -35,6 +35,7 @@ MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 MAJOR_RE = re.compile(r"^\w+(\([^)]*\))?!:")
 FEAT_RE = re.compile(r"^feat(\([^)]*\))?:")
 FIX_RE = re.compile(r"^fix(\([^)]*\))?:")
+STABLE_RELEASE_TAG_RE = re.compile(r"^aissert--v(\d+)\.(\d+)\.(\d+)$")
 
 
 def run_git(*args: str) -> str:
@@ -51,10 +52,17 @@ def latest_release_tag() -> str | None:
     if not tags:
         return None
 
-    def version_key(tag: str) -> tuple[int, ...]:
-        return tuple(int(p) for p in tag.removeprefix("aissert--v").split("."))
+    def version_key(tag: str) -> tuple[int, int, int] | None:
+        match = STABLE_RELEASE_TAG_RE.match(tag)
+        if match is None:
+            return None
+        return tuple(int(p) for p in match.groups())
 
-    return max(tags, key=version_key)
+    release_tags = [(version_key(tag), tag) for tag in tags]
+    stable_release_tags = [(key, tag) for key, tag in release_tags if key is not None]
+    if not stable_release_tags:
+        return None
+    return max(stable_release_tags)[1]
 
 
 def commit_subjects_since(tag: str | None) -> list[str]:
