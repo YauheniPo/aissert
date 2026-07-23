@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+concurrency:
+  group: snapshot-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -13,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions/setup-python@v5
         with:
@@ -22,7 +28,7 @@ jobs:
         id: version
         run: |
           version=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
-          snapshot_version="${version}-SNAPSHOT"
+          snapshot_version="${version}-SNAPSHOT-pr${{ github.event.pull_request.number }}"
           echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
           echo "Snapshot version: ${snapshot_version}"
 
@@ -48,16 +54,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag_name="aissert--v${{ steps.version.outputs.snapshot_version }}"
-          
-          # Check if release exists
+          title="${tag_name} (PR #${{ github.event.pull_request.number }})"
+          notes="Snapshot build from PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.head.sha }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "${tag_name}" "${{ github.event.pull_request.head.sha }}"
+          git push origin "refs/tags/${tag_name}" --force
+
           if gh release view "${tag_name}" > /dev/null 2>&1; then
-            echo "Snapshot release ${tag_name} already exists, skipping creation"
+            echo "Updating snapshot release: ${tag_name}"
+            gh release edit "${tag_name}" \
+              --title "${title}" \
+              --notes "${notes}" \
+              --prerelease
+            gh release upload "${tag_name}" dist/*.zip --clobber
           else
             echo "Creating new snapshot release: ${tag_name}"
             gh release create "${tag_name}" dist/*.zip \
-              --title "${tag_name} (PR #${{ github.event.pull_request.number }})" \
-              --notes "Snapshot build from PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.head.sha }}" \
-              --prerelease
+              --title "${title}" \
+              --notes "${notes}" \
+              --prerelease \
+              --verify-tag
           fi
 
       - name: Comment PR with snapshot info
@@ -65,11 +83,29 @@ jobs:
         with:
           script: |
             const tag = "aissert--v${{ steps.version.outputs.snapshot_version }}";
-            const message = `## 📦 Snapshot Release\n\nSnapshot build created: [\`${tag}\`](https://github.com/${{ github.repository }}/releases/tag/${tag})\n\nDownload the plugin zip from the [release page](https://github.com/${{ github.repository }}/releases/tag/${tag}).`;
-            
-            github.rest.issues.createComment({
+            const marker = "<!-- aissert-snapshot-release -->";
+            const message = `${marker}\n## Snapshot Release\n\nSnapshot build: [\`${tag}\`](https://github.com/${{ github.repository }}/releases/tag/${tag})\n\nDownload the plugin zip from the [release page](https://github.com/${{ github.repository }}/releases/tag/${tag}).`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
               issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
+              repo: context.repo.repo
             });
+            const existing = comments.find((comment) =>
+              comment.user.type === "Bot" && comment.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: message
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

@@ -10,11 +10,13 @@ tests, plugin scaffold, schema-lint CI, agent prompts, scripts, synthetic
 golden/example); 4 (canary built and hand-reviewed, all items `reviewed: true`;
 a live judge rerun against a real target skill found genuine judge-precision
 drift on borderline items, fixed via rubric + `min_agreement` relaxed to 0.90
-with evidence — see knowledge/hotspots/judges-and-canary.md). Milestone 5
-(baseline run, K1/K2 derived from it, report-only period, then gate) has not
-started — current K1/K2 in golden/*/manifest.json are placeholders, not
-calibrated. This document is the source of truth. If implementation needs to
-deviate, update this file in the same MR/PR.
+with evidence — see knowledge/hotspots/judges-and-canary.md). `aggregate.py`
+now writes both `results.json` and a compact `report.md`; richer evidence
+clustering remains future polish. Milestone 5 (baseline run, K1/K2 derived from
+it, report-only period, then gate) has not started — current K1/K2 in
+golden/*/manifest.json are placeholders, not calibrated. This document is the
+source of truth. If implementation needs to deviate, update this file in the
+same MR/PR.
 
 ---
 

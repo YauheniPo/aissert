@@ -15,7 +15,7 @@ eval-runs/{timestamp}-{target}/
 ├── verdicts/{item}/{i}-m1.json     # judge-precision output
 ├── verdicts/{item}/{i}-m2.json     # judge-recall output
 ├── results.json                    # written by aggregate.py
-└── report.md                       # written by aggregate.py (later milestone)
+└── report.md                       # compact human-readable summary
 ```
 
 `{item}` is the golden item id, `{i}` is the iteration number, **1-based**
@@ -94,7 +94,8 @@ field) is a **pipeline error, never a silent skip**.
   "golden_set": {
     "path": "golden/example",
     "hash": "sha256:…",
-    "set_version": "1.0.0"
+    "set_version": "1.0.0",
+    "owner": "epopovich"
   },
   "model_id": "claude-sonnet-5",
   "iterations": 3,
@@ -142,6 +143,12 @@ Definitions (all computed in Python, never by an LLM):
 - `model_id` — target-skill model as reported by the orchestrator; `null` if
   not provided (model drift tracking, DESIGN.md §7.3).
 - `runs` sorted by `(item_id, iteration)`.
+
+## report.md — aggregate.py output
+
+A compact Markdown rendering of the same deterministic data in `results.json`:
+verdict, golden-set identity, gate summary, verbosity diagnostic, and per-run
+m1/m2 rows. `results.json` remains canonical for machines and trend storage.
 
 ## Extraction sanity check
 

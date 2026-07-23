@@ -332,9 +332,28 @@ def test_load_golden_set_ok(tmp_path):
     gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 4)])
     golden = load_golden_set(gdir)
     assert golden.target_skill == "demo-skill"
+    assert golden.owner == "test"
     assert golden.defaults_k1 == 0.8
     assert golden.items[0].golden_fact_ids == ("gf1", "gf2", "gf3", "gf4")
     assert golden.hash.startswith("sha256:")
+
+
+def test_golden_manifest_schema_version_required(tmp_path):
+    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2)])
+    manifest = json.loads((gdir / "manifest.json").read_text())
+    manifest["schema_version"] = 2
+    write_json(gdir / "manifest.json", manifest)
+    with pytest.raises(PipelineError, match="schema_version"):
+        load_golden_set(gdir)
+
+
+def test_golden_manifest_owner_required(tmp_path):
+    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2)])
+    manifest = json.loads((gdir / "manifest.json").read_text())
+    manifest.pop("owner")
+    write_json(gdir / "manifest.json", manifest)
+    with pytest.raises(PipelineError, match="'owner'"):
+        load_golden_set(gdir)
 
 
 def test_golden_weights_must_sum_to_one(tmp_path):
@@ -416,12 +435,16 @@ def test_main_pass_writes_results(tmp_path, capsys):
     assert results["model_id"] == "test-model"
     assert results["iterations"] == 2
     assert results["golden_set"]["hash"].startswith("sha256:")
+    assert results["golden_set"]["owner"] == "test"
     assert results["thresholds"] == {
         "k1": 0.8, "k2": 0.7, "source": {"k1": "manifest", "k2": "manifest"}
     }
     assert len(results["runs"]) == 2
     assert results["runs"][0]["m1"]["value"] == 0.8
     assert results["runs"][0]["m2"]["value"] == 0.75
+    report = (run_dir / "report.md").read_text()
+    assert "Verdict: **PASS**" in report
+    assert "| gs-001 | 1 | 0.8000 | 0.7500 |" in report
     assert "PASS" in capsys.readouterr().out
 
 
