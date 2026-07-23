@@ -1,0 +1,58 @@
+name: snapshot
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  build-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Get current version from plugin.json
+        id: version
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          snapshot_version="${version}-SNAPSHOT"
+          echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update plugin.json with snapshot version
+        run: |
+          python3 << 'EOF'
+          import json
+          
+          with open('.claude-plugin/plugin.json', 'r') as f:
+              plugin = json.load(f)
+          
+          plugin['version'] = '${{ steps.version.outputs.snapshot_version }}'
+          
+          with open('.claude-plugin/plugin.json', 'w') as f:
+              json.dump(plugin, f, indent=2)
+          EOF
+
+      - name: Build plugin zip
+        run: python3 scripts/build_plugin_zip.py
+
+      - name: Create snapshot release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag_name="aissert--v${{ steps.version.outputs.snapshot_version }}"
+          
+          # Delete previous snapshot release if exists
+          gh release delete "${tag_name}" --yes 2>/dev/null || true
+          git push origin ":refs/tags/${tag_name}" 2>/dev/null || true
+          
+          # Create new snapshot release
+          gh release create "${tag_name}" dist/*.zip \
+            --title "${tag_name} (PR #${{ github.event.pull_request.number }})" \
+            --notes "Snapshot build from PR #${{ github.event.pull_request.number }}" \
+            --prerelease
