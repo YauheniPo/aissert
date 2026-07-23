@@ -1,7 +1,7 @@
 {
   "name": "aissert",
   "displayName": "aissert",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "LLM-as-judge eval harness for Claude Code skills: fact-level binary verdicts, deterministic Python gates.",
   "author": {
     "name": "Yauheni Papovich"
