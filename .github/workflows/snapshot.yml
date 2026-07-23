@@ -2,7 +2,7 @@ name: snapshot
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -23,36 +23,71 @@ jobs:
           version=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
           snapshot_version="${version}-SNAPSHOT"
           echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
+          echo "Snapshot version: ${snapshot_version}"
 
-      - name: Update plugin.json with snapshot version
+      - name: Create temporary snapshot version
         run: |
           python3 << 'EOF'
           import json
+          import os
           
+          # Read original plugin.json
           with open('.claude-plugin/plugin.json', 'r') as f:
               plugin = json.load(f)
           
-          plugin['version'] = '${{ steps.version.outputs.snapshot_version }}'
+          original_version = plugin['version']
+          snapshot_version = f"{original_version}-SNAPSHOT"
+          
+          # Update version temporarily for build
+          plugin['version'] = snapshot_version
           
           with open('.claude-plugin/plugin.json', 'w') as f:
               json.dump(plugin, f, indent=2)
+          
+          print(f"Updated plugin.json version to: {snapshot_version}")
           EOF
 
       - name: Build plugin zip
         run: python3 scripts/build_plugin_zip.py
 
-      - name: Create snapshot release
+      - name: Restore original plugin.json
+        run: |
+          git checkout .claude-plugin/plugin.json
+
+      - name: Upload snapshot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-build-${{ github.event.pull_request.number }}
+          path: dist/
+          retention-days: 30
+
+      - name: Create or update snapshot release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag_name="aissert--v${{ steps.version.outputs.snapshot_version }}"
           
-          # Delete previous snapshot release if exists
-          gh release delete "${tag_name}" --yes 2>/dev/null || true
-          git push origin ":refs/tags/${tag_name}" 2>/dev/null || true
-          
-          # Create new snapshot release
-          gh release create "${tag_name}" dist/*.zip \
-            --title "${tag_name} (PR #${{ github.event.pull_request.number }})" \
-            --notes "Snapshot build from PR #${{ github.event.pull_request.number }}" \
-            --prerelease
+          # Check if release exists
+          if gh release view "${tag_name}" > /dev/null 2>&1; then
+            echo "Snapshot release ${tag_name} already exists, skipping creation"
+          else
+            echo "Creating new snapshot release: ${tag_name}"
+            gh release create "${tag_name}" dist/*.zip \
+              --title "${tag_name} (PR #${{ github.event.pull_request.number }})" \
+              --notes "Snapshot build from PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.head.sha }}" \
+              --prerelease
+          fi
+
+      - name: Comment PR with snapshot info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = "aissert--v${{ steps.version.outputs.snapshot_version }}";
+            const message = `## 📦 Snapshot Release\n\nSnapshot build created: [\`${tag}\`](https://github.com/${{ github.repository }}/releases/tag/${tag})\n\nDownload the plugin zip from the [release page](https://github.com/${{ github.repository }}/releases/tag/${tag}).`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
