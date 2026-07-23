@@ -7,7 +7,7 @@
     {
       "name": "aissert",
       "source": "./",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "description": "LLM-as-judge eval harness for Claude Code skills: fact-level binary verdicts, deterministic Python gates."
     }
   ]
