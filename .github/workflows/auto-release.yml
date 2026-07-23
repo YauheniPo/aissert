@@ -1,11 +1,14 @@
 # Auto-bump per merge to main: scripts/bump_version.py picks the bump level
-# from conventional commit subjects since the last aissert--v* tag, commits
-# the version bump, and pushes a matching tag. That tag push triggers
-# release.yml, which builds the zip and publishes the GitHub Release.
+# from conventional commit subjects since the last aissert--v* tag (excluding
+# snapshot tags with branch names), commits the version bump, and pushes a
+# matching release tag. That tag push triggers release.yml, which builds the
+# zip and publishes the GitHub Release.
 #
 # Guard: the bump commit itself starts with "chore(release):" — the job
 # condition below skips re-running on that push, so the bump commit can't
 # trigger an infinite bump loop.
+#
+# Snapshot releases from branches use snapshot-release.yml instead.
 #
 # Requires: main must accept direct pushes from the default GITHUB_TOKEN
 # (no branch protection blocking the Actions bot), since this pushes a commit
