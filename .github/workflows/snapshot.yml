@@ -25,34 +25,15 @@ jobs:
           echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
           echo "Snapshot version: ${snapshot_version}"
 
-      - name: Create temporary snapshot version
-        run: |
-          python3 << 'EOF'
-          import json
-          import os
-          
-          # Read original plugin.json
-          with open('.claude-plugin/plugin.json', 'r') as f:
-              plugin = json.load(f)
-          
-          original_version = plugin['version']
-          snapshot_version = f"{original_version}-SNAPSHOT"
-          
-          # Update version temporarily for build
-          plugin['version'] = snapshot_version
-          
-          with open('.claude-plugin/plugin.json', 'w') as f:
-              json.dump(plugin, f, indent=2)
-          
-          print(f"Updated plugin.json version to: {snapshot_version}")
-          EOF
+      - name: Sync versions for snapshot build
+        run: python3 scripts/sync_versions.py "${{ steps.version.outputs.snapshot_version }}"
 
       - name: Build plugin zip
         run: python3 scripts/build_plugin_zip.py
 
-      - name: Restore original plugin.json
+      - name: Restore original versions
         run: |
-          git checkout .claude-plugin/plugin.json
+          git checkout .claude-plugin/plugin.json .claude-plugin/marketplace.json
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v4
