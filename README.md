@@ -4,10 +4,11 @@
 [![Auto Release](https://github.com/YauheniPo/aissert/actions/workflows/auto-release.yml/badge.svg)](https://github.com/YauheniPo/aissert/actions/workflows/auto-release.yml)
 [![Snapshot](https://github.com/YauheniPo/aissert/actions/workflows/snapshot.yml/badge.svg)](https://github.com/YauheniPo/aissert/actions/workflows/snapshot.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/YauheniPo/aissert?sort=semver&display_name=tag)](https://github.com/YauheniPo/aissert/releases)
+[![Downloads](https://img.shields.io/github/downloads/YauheniPo/aissert/total.svg)](https://github.com/YauheniPo/aissert/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-plugin-111111)](.claude-plugin/plugin.json)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](#contributing)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ![LLM as Judge](https://img.shields.io/badge/LLM--as--judge-fact--level-7c3aed)
 ![Deterministic Gates](https://img.shields.io/badge/gates-deterministic%20Python-2563eb)
@@ -24,6 +25,15 @@ into atomic facts, get binary per-fact verdicts from two isolated judges
 compute all numbers and the pass/fail verdict in deterministic Python.
 Full rationale and architecture: [DESIGN.md](DESIGN.md).
 
+## Project links
+
+- [Latest release](https://github.com/YauheniPo/aissert/releases/latest)
+- [Design](DESIGN.md)
+- [Roadmap](ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+
 ## Why try it
 
 - Fact-level precision and recall instead of fragile holistic LLM scores.
@@ -32,7 +42,37 @@ Full rationale and architecture: [DESIGN.md](DESIGN.md).
 - Synthetic fixtures in the public repo; real golden sets stay outside the repo.
 - Packaged as a Claude Code plugin with local dev, snapshot, and release flows.
 
+## Quickstart
+
+Clone the repo and run the deterministic checks:
+
+```
+git clone https://github.com/YauheniPo/aissert.git
+cd aissert
+pytest tests/ -q
+python3 scripts/build_plugin_zip.py
+python3 skills/aissert/scripts/validate_golden.py golden/example --target-skill example-bug-summarizer
+```
+
+Install the plugin in Claude Code:
+
+```
+/plugin marketplace add /path/to/aissert
+/plugin install aissert@aissert
+```
+
+Run a smoke eval against a skill:
+
+```
+/aissert:eval golden_set=golden/example target_skill=<skill> --smoke
+```
+
 ## Install (local dev loop)
+
+For normal use, download the plugin zip from the
+[latest GitHub Release](https://github.com/YauheniPo/aissert/releases/latest).
+Release assets are the distribution channel for this plugin; GitHub Packages is
+not required.
 
 **Never run this against a working tree that has a real (corporate) golden set
 in it, even gitignored.** A directory-source marketplace add copies the whole
@@ -109,9 +149,10 @@ python3 scripts/build_plugin_zip.py --output /custom/path.zip
 ```
 
 Allowlist, not a denylist: only `.claude-plugin/`, `agents/`, `skills/`,
-`commands/`, `golden/example/`, `canary/`, `README.md`, `LICENSE` — every
-other repo dir (`tests/`, `knowledge/`, `scripts/`, `.venv/`, `golden-local/`,
-...) is excluded by construction, so a new dev file never ships by accident.
+`commands/`, `golden/example/`, `canary/`, public top-level docs, and `LICENSE`
+are included. Every other repo dir (`tests/`, `knowledge/`, `scripts/`,
+`.venv/`, `golden-local/`, ...) is excluded by construction, so a new dev file
+never ships by accident.
 Fails (exit 2) if `plugin.json` and `marketplace.json` versions disagree, or
 if an allowlisted path is missing.
 
@@ -147,13 +188,10 @@ manual/scheduled only (costs API money).
 
 ## Contributing
 
-Contributions are welcome. The highest-value areas right now are:
-
-- better report rendering and failure clustering from `results.json`;
-- more deterministic linters for golden-set quality and duplicate facts;
-- CI workflows for scheduled canary/baseline runs;
-- docs and examples for creating a new golden set from scratch;
-- small fixes that keep the plugin zip lean and safe to publish.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and
+[ROADMAP.md](ROADMAP.md). The highest-value areas right now are better reports,
+golden-set quality linting, scheduled canary/baseline workflows, and examples
+for creating a new golden set from scratch.
 
 Before opening a PR:
 
