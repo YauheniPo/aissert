@@ -16,11 +16,11 @@ jobs:
   build-snapshot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -43,7 +43,7 @@ jobs:
           git checkout .claude-plugin/plugin.json .claude-plugin/marketplace.json
 
       - name: Upload snapshot artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snapshot-build-${{ github.event.pull_request.number }}
           path: dist/
@@ -79,7 +79,7 @@ jobs:
           fi
 
       - name: Comment PR with snapshot info
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const tag = "aissert--v${{ steps.version.outputs.snapshot_version }}";
