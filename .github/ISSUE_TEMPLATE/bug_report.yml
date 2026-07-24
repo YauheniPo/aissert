@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible aissert bug
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not paste proprietary golden data, Jira snapshots, or secrets.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Minimal steps using synthetic data when possible.
+      placeholder: |
+        1. Run ...
+        2. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or output
+      description: Redact secrets and proprietary data.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "aissert--v0.9.0 or commit SHA"
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Data boundary
+      options:
+        - label: I removed or replaced proprietary data with synthetic examples.
+          required: true

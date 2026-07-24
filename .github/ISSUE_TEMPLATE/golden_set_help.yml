@@ -1,0 +1,29 @@
+name: Golden set help
+description: Ask about golden-set schema, validation, or calibration
+title: "docs: golden set "
+labels: ["golden-set", "question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please use synthetic examples only. Do not paste real Jira, Confluence, customer, or proprietary data.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to validate or calibrate?
+    validations:
+      required: true
+  - type: textarea
+    id: synthetic_example
+    attributes:
+      label: Synthetic example
+      description: Optional minimal manifest/item snippet using fake data.
+      render: json
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Data boundary
+      options:
+        - label: The example contains only synthetic data.
+          required: true

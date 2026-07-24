@@ -5,10 +5,10 @@ Reads the version from .claude-plugin/plugin.json, checks it matches the
 plugin entry in .claude-plugin/marketplace.json, and zips only what the
 plugin needs at runtime (INCLUDE_PATHS below) — an allowlist, not a denylist:
 dev-only content (tests/, knowledge/ wiki, scripts/wiki/, CLAUDE.md,
-DESIGN.md, .git*, .venv, .idea) and anything outside INCLUDE_PATHS is
-excluded by construction, so a new dev file added to the repo never ships by
-accident. golden-local/ (real/corporate golden sets, see DESIGN.md §9) is
-never in this list.
+DESIGN.md, .git*, .venv, .idea) and anything outside INCLUDE_PATHS is excluded
+by construction, so a new dev file added to the repo never ships by accident.
+Small public project docs are included because README links to them. golden-local/
+(real/corporate golden sets, see DESIGN.md §9) is never in this list.
 
 Exit codes: 0 = zip written, 2 = version mismatch, missing manifest, or an
 INCLUDE_PATHS entry that doesn't exist.
@@ -34,7 +34,12 @@ INCLUDE_PATHS = [
     "golden/example",
     "canary",
     "README.md",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
     "LICENSE",
+    "ROADMAP.md",
+    "SECURITY.md",
 ]
 EXCLUDE_SUFFIXES = {".pyc"}
 EXCLUDE_NAMES = {".DS_Store"}
