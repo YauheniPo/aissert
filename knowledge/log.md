@@ -3,6 +3,15 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-07-25
+
+- Added development-time Claude Code automation: `.claude` verification/wiki
+  skills, dev helper agents, PreToolUse/PostToolUse/Stop hooks in
+  `scripts/claude/`, the `@claude` GitHub Action, and managed Claude Code
+  Review setup notes. Updated
+  `repo/structure.md`, `repo/build-test-and-ci.md`, and
+  `meta/source-inventory.md`.
+
 ## 2026-07-21 (4)
 
 - SKILL.md steps 2-3 (generate, extract) now explicitly require parallel

@@ -7,7 +7,7 @@ start, if none exists) and HEAD, picks ONE bump level for the whole range:
   - subject matches `type(scope)!:` (e.g. `feat!:`) -> major
   - else any `feat:`/`feat(scope):` subject -> minor
   - else any `fix:`/`fix(scope):` subject -> patch
-  - else (only docs/style/test/ci/chore/refactor) -> nothing to release
+  - else any non-empty range (docs/style/test/ci/chore/refactor/etc.) -> patch
 
 Only the `!` subject-line marker is checked for breaking changes — footer-style
 `BREAKING CHANGE:` bodies are not scanned, to keep this a subject-line-only,
@@ -17,8 +17,8 @@ Writes the bumped version into .claude-plugin/plugin.json and the matching
 plugin entry in .claude-plugin/marketplace.json. Does not commit, tag, or
 push — the calling workflow does that.
 
-Exit codes: 0 = bumped (new version printed to stdout), 3 = no release-worthy
-commit in range (nothing printed), 2 = pipeline error (git/manifest failure).
+Exit codes: 0 = bumped (new version printed to stdout), 3 = no commits in
+range (nothing printed), 2 = pipeline error (git/manifest failure).
 """
 from __future__ import annotations
 
@@ -77,6 +77,8 @@ def bump_level(subjects: list[str]) -> str | None:
         return "minor"
     if any(FIX_RE.match(s) for s in subjects):
         return "patch"
+    if subjects:
+        return "patch"
     return None
 
 
@@ -112,7 +114,7 @@ def main() -> int:
 
     level = bump_level(subjects)
     if level is None:
-        print("bump_version: no feat/fix/breaking commits since last release", file=sys.stderr)
+        print("bump_version: no commits since last release", file=sys.stderr)
         return 3
 
     new_version = bump(current_version, level)

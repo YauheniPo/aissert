@@ -1,0 +1,49 @@
+name: claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - run: pip install pytest
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: "@claude"
+          settings: ".claude/settings.json"
+          additional_permissions: |
+            actions: read
+          claude_args: |
+            --max-turns 8
+            --permission-mode dontAsk
+            --allowedTools "Bash(git status --short),Bash(git diff --stat),Bash(git diff -- .),Bash(pytest tests/ -q),Bash(python3 scripts/build_plugin_zip.py),Bash(python3 scripts/wiki/lint.py),Edit,Write,MultiEdit"
+            --append-system-prompt "You are working on aissert. Follow CLAUDE.md, keep real golden datasets outside the repository tree, never push to main, and run the repo verification skill before finishing code changes."

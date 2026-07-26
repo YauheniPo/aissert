@@ -242,8 +242,9 @@ def _page(source_paths):
 
 def test_significant_change_none_below_threshold():
     # A single change outside every anchor/prefix/high-signal bucket
-    # (tests/ isn't high-signal — only agents/, skills/, commands/, golden/,
-    # canary/, scripts/wiki/, README/DESIGN/CLAUDE.md are).
+    # (tests/ isn't high-signal — only .claude/, agents/, skills/, commands/,
+    # golden/, canary/, scripts/claude/, scripts/wiki/,
+    # README/DESIGN/CLAUDE.md are).
     result = lib.analyze_significant_change(
         ["tests/fixtures/example.json"],
         [],
@@ -277,6 +278,17 @@ def test_significant_change_architectural_anchor():
     assert result["significant_change"] is True
     assert result["reasons"][0]["type"] == "architectural_anchor_changed"
     assert result["reasons"][0]["paths"] == ["agents/judge-precision.md"]
+
+
+def test_significant_change_claude_automation_anchor():
+    result = lib.analyze_significant_change(
+        [".claude/settings.json"],
+        [],
+        tracked_files=[".claude/settings.json"],
+        untracked_files=[],
+    )
+    reason_types = [r["type"] for r in result["reasons"]]
+    assert "architectural_anchor_changed" in reason_types
 
 
 def test_significant_change_uncovered_high_signal_path():
@@ -316,6 +328,11 @@ def test_get_read_plan_matches_rule_pages():
     plan = lib.get_read_plan(["agents/judge-recall.md"])
     assert "knowledge/domains/eval-pipeline.md" in plan
     assert "knowledge/hotspots/judges-and-canary.md" in plan
+
+
+def test_get_read_plan_matches_claude_automation():
+    plan = lib.get_read_plan(["scripts/claude/hook_stop_verify.py"])
+    assert "knowledge/repo/build-test-and-ci.md" in plan
 
 
 def test_get_read_plan_falls_back_to_structure_for_unmatched_changes():

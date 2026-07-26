@@ -1,6 +1,6 @@
 # Auto-bump per merge to main: scripts/bump_version.py picks the bump level
-# from conventional commit subjects since the last stable aissert--vX.Y.Z tag,
-# commits the version bump, and pushes a
+# from commit subjects since the last stable aissert--vX.Y.Z tag, commits the
+# version bump, and pushes a
 # matching release tag. The same workflow builds the plugin zip and publishes
 # the GitHub Release; pushes made with GITHUB_TOKEN do not trigger follow-up
 # push workflows, so release.yml is only for manually pushed stable tags.
@@ -48,7 +48,7 @@ jobs:
           status=$?
           set -e
           if [ "$status" -eq 3 ]; then
-            echo "no release-worthy commits since last tag, skipping"
+            echo "no commits since last tag, skipping"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             exit 0
           elif [ "$status" -ne 0 ]; then

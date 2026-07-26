@@ -158,11 +158,12 @@ if an allowlisted path is missing.
 
 Releases are fully automatic on every push to `main`:
 
-- `auto-release.yml` reads conventional-commit subjects since the last
-  stable `aissert--vX.Y.Z` tag, picks a bump level (`feat!:`/`type!:` → major,
-  `feat:` → minor, `fix:` → patch, nothing else → no release), bumps both
-  manifest files, commits, pushes a matching tag, builds the zip, and publishes
-  the GitHub Release in the same workflow.
+- `auto-release.yml` reads commit subjects since the last stable
+  `aissert--vX.Y.Z` tag, picks a bump level (`feat!:`/`type!:` → major,
+  `feat:` → minor, everything else → patch), bumps both manifest files,
+  commits, pushes a matching tag, builds the zip, and publishes the GitHub
+  Release in the same workflow. Every merged PR to `main` produces a new
+  version.
 - `release.yml` remains for manually pushed stable tags. Snapshot tags are
   excluded from stable releases.
 
@@ -186,6 +187,27 @@ pytest tests/ -q
 Python 3.12, stdlib only. CI runs schema lint + tests per PR; canary eval is
 manual/scheduled only (costs API money).
 
+### Claude Code automation
+
+This repo includes development-time Claude Code automation under `.claude/`:
+
+- `verify` skill — run after edits to inspect the diff and execute relevant
+  deterministic checks.
+- `wiki-maintenance` skill — scoped procedure for `knowledge/` upkeep.
+- PreToolUse/PostToolUse/Stop hooks — block direct pushes to `main`, keep real
+  golden data out of the repo tree, enforce runtime agent/plugin invariants, and
+  run proportional verification before a Claude turn ends.
+- Dev-only agents in `.claude/agents/` for repository review, release auditing,
+  and wiki maintenance. Runtime plugin agents remain in `agents/`.
+- `.worktreeinclude` is intentionally empty; do not copy `.env`, `golden-local/`,
+  `eval-runs/`, or real datasets into parallel Claude worktrees.
+
+GitHub comments can trigger Claude with `@claude` via
+`.github/workflows/claude.yml`. Configure the repository secret
+`ANTHROPIC_API_KEY` before using it. Managed Claude Code Review is configured
+outside workflows through the Claude GitHub app; see
+`.github/CLAUDE_CODE_REVIEW_CONFIG.md` for the intended repo settings.
+
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and
@@ -201,5 +223,5 @@ python3 scripts/build_plugin_zip.py
 ```
 
 Use conventional commit subjects (`fix:`, `feat:`, `docs:`, `test:`, `ci:`).
-Release automation uses them to decide whether to publish a patch, minor, or
-major release.
+Release automation uses breaking/`feat:` subjects for major/minor bumps;
+all other merged PRs publish a patch release.

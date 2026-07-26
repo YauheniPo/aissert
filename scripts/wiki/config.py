@@ -43,7 +43,9 @@ SIGNIFICANT_ANCHORS = [
 # Directories where any change is architecturally significant: judge/extractor
 # behavior, deterministic math, and the JSON contracts everything else obeys.
 SIGNIFICANT_PREFIXES = [
+    ".claude/",
     "agents/",
+    "scripts/claude/",
     "skills/aissert/scripts/",
     "skills/aissert/references/",
 ]
@@ -118,7 +120,7 @@ READ_PLAN_RULES = [
         ],
     },
     {
-        "patterns": ["tests/", ".github/workflows/"],
+        "patterns": ["tests/", ".github/workflows/", ".claude/", "scripts/claude/"],
         "pages": ["knowledge/repo/build-test-and-ci.md"],
     },
     {
