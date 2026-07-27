@@ -3,10 +3,17 @@ title: Build, test & CI
 kind: repo
 summary: Local dev loop for the plugin, pytest invocation, and what GitHub Actions actually runs per PR vs on demand.
 source_paths:
+  - .claude/settings.json
+  - .claude/skills
+  - .claude/agents
   - tests
+  - .github/PULL_REQUEST_TEMPLATE.md
   - .github/workflows/ci.yml
+  - .github/workflows/claude.yml
+  - .github/CLAUDE_CODE_REVIEW_CONFIG.md
   - .github/workflows/auto-release.yml
   - .github/workflows/release.yml
+  - scripts/claude
   - scripts/build_plugin_zip.py
   - scripts/bump_version.py
   - README.md
@@ -14,7 +21,7 @@ related_pages:
   - ../index.md
   - ../hotspots/aggregate-py.md
   - ../domains/change-playbooks.md
-last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
+last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
 ---
 
 ## Local dev loop (plugin)
@@ -49,6 +56,7 @@ clear reason). Test files:
 | `test_check_canary.py` | `check_canary.py`. |
 | `test_scripts.py` | `validate_golden.py`, `run_target.py`. |
 | `test_wiki.py` | `scripts/wiki/lib.py` — frontmatter parsing, significant-change heuristics, lint checks. |
+| `test_claude_automation.py` | `.claude` settings, hook helpers, and `@claude` workflow wiring. |
 
 Rule from `CLAUDE.md`: every `aggregate.py` behavior gets a unit test — it's
 fully deterministic code, no excuses.
@@ -66,8 +74,8 @@ Three jobs, on every PR and push to `main`:
 - `tests` — `pytest tests/ -q` (everything, including wiki tests).
 - `wiki-lint` — `python3 scripts/wiki/lint.py`, step-level `continue-on-error:
   true`. Runs on every PR so drift is visible early, but never blocks a merge:
-  the step shows failed in the job log, the job/check itself still reports
-  success. Consistent with commits/pushes never being blocked on wiki state
+  the step emits a warning instead of failing the job. Consistent with
+  commits/pushes never being blocked on wiki state
   (see [judges-and-canary.md](../hotspots/judges-and-canary.md) for the
   analogous reasoning on canary) — this is visibility, not a gate.
 
@@ -76,6 +84,36 @@ Three jobs, on every PR and push to `main`:
 needs canary verification (see
 [change-playbooks.md](../domains/change-playbooks.md)), do it locally/by hand
 before merging — CI will not catch a canary regression for you.
+
+## Claude Code automation
+
+Development-time Claude Code automation lives under `.claude/` and
+`scripts/claude/`; it is not part of the packaged plugin zip. The project
+settings wire:
+
+- `SessionStart` — injects the wiki read-plan.
+- `PreToolUse` — blocks direct pushes to `main` and attempts to place real
+  golden data under the repo tree.
+- `PostToolUse` — re-checks immutable plugin identity and runtime agent
+  invariants after edits.
+- `Stop` — runs proportional local verification before a Claude turn ends.
+
+Skills under `.claude/skills/` package repeated procedures (`verify`,
+`wiki-maintenance`). Dev helper agents under `.claude/agents/` provide a cold
+review pass, release audit, and wiki-maintenance helper; runtime eval agents
+remain under top-level `agents/`.
+
+`.github/workflows/claude.yml` enables `@claude` comments and manual
+`workflow_dispatch` runs through `anthropics/claude-code-action@v1`. It uses
+`.claude/settings.json`, allows only scoped Bash commands needed for status,
+diff, pytest, packaging, and wiki lint, and needs the `ANTHROPIC_API_KEY`
+repository secret. It grants `actions: read` so Claude can inspect CI failures
+when asked.
+
+Managed Claude Code Review is not a workflow. `.github/CLAUDE_CODE_REVIEW_CONFIG.md`
+documents the intended admin-side setup for the Claude GitHub app: review PRs
+on open/push, optionally support `@claude review`, post findings only, and
+leave approval/blocking decisions to humans.
 
 ## Packaging & release
 
@@ -91,11 +129,11 @@ missing allowlisted path. Needed for Claude Desktop's "Upload local plugin"
 Releases are automatic, triggered off `main`, no manual version editing:
 
 1. `auto-release.yml` (push to `main`) — `scripts/bump_version.py` reads
-   conventional-commit subjects since the last `aissert--v*` tag, picks one
-   bump level for the whole range (`type!:` → major, `feat:` → minor,
-   `fix:` → patch, else → exit 3, no release), writes both manifests, commits,
-   tags, pushes. Guards against re-triggering itself on the bump commit by
-   checking the commit message prefix (`chore(release):`) before running.
+   commit subjects since the last `aissert--v*` tag, picks one bump level for
+   the whole range (`type!:` → major, `feat:` → minor, everything else →
+   patch), writes both manifests, commits, tags, pushes. Exit 3 is only for an
+   empty commit range. Guards against re-triggering itself on the bump commit
+   by checking the commit message prefix (`chore(release):`) before running.
 2. `release.yml` (tag push matching `aissert--v*`) — builds the zip, checks
    the tag matches `plugin.json`'s version, publishes it as a GitHub Release
    asset.

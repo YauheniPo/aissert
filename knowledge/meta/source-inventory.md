@@ -3,6 +3,7 @@ title: Source inventory
 kind: meta
 summary: Which raw repo paths are covered by which wiki page — the map scripts/wiki/changed.py uses to find coverage gaps.
 source_paths:
+  - .claude
   - agents
   - skills
   - commands
@@ -13,10 +14,11 @@ source_paths:
   - DESIGN.md
   - CLAUDE.md
   - README.md
+  - .worktreeinclude
 related_pages:
   - ../index.md
   - lint-rules.md
-last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
+last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
 ---
 
 Coverage = union of every page's `source_paths`. A high-signal path (see
@@ -28,6 +30,8 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `DESIGN.md` | [repo/structure.md](../repo/structure.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md), [status.md](../status.md) |
 | `CLAUDE.md` | [lint-rules.md](lint-rules.md) (hard rules referenced throughout) |
 | `README.md` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `.worktreeinclude` | [repo/structure.md](../repo/structure.md) |
+| `.claude/settings.json`, `.claude/skills/`, `.claude/agents/` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `.claude-plugin/` | [repo/structure.md](../repo/structure.md) |
 | `agents/fact-extractor.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `agents/judge-precision.md`, `agents/judge-recall.md` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
@@ -39,8 +43,9 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `golden/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md) |
 | `canary/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `tests/` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
-| `.github/workflows/ci.yml`, `auto-release.yml`, `release.yml` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `.github/PULL_REQUEST_TEMPLATE.md`, `.github/workflows/ci.yml`, `claude.yml`, `auto-release.yml`, `release.yml`, `.github/CLAUDE_CODE_REVIEW_CONFIG.md` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/build_plugin_zip.py`, `scripts/bump_version.py` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `scripts/claude/` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/wiki/` | [lint-rules.md](lint-rules.md), this page |
 
 Not covered by design, and that's fine: `eval-runs/` (gitignored run

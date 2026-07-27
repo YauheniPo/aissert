@@ -527,7 +527,16 @@ def analyze_significant_change(
         if file.startswith(("knowledge/", "eval-runs/")):
             return False
         return (
-            file.startswith(("agents/", "skills/", "commands/", "golden/", "canary/", "scripts/wiki/"))
+            file.startswith((
+                ".claude/",
+                "agents/",
+                "skills/",
+                "commands/",
+                "golden/",
+                "canary/",
+                "scripts/claude/",
+                "scripts/wiki/",
+            ))
             or file in ("README.md", "DESIGN.md", "CLAUDE.md")
         )
 

@@ -36,3 +36,23 @@ def test_latest_release_tag_returns_none_when_only_snapshot_tags(monkeypatch):
     monkeypatch.setattr(bump_version, "run_git", fake_run_git)
 
     assert bump_version.latest_release_tag() is None
+
+
+def test_bump_level_uses_major_for_bang_subject():
+    assert bump_version.bump_level(["feat!: break API", "docs: update"]) == "major"
+
+
+def test_bump_level_uses_minor_for_feat_subject():
+    assert bump_version.bump_level(["docs: update", "feat(cli): add flag"]) == "minor"
+
+
+def test_bump_level_uses_patch_for_fix_subject():
+    assert bump_version.bump_level(["fix: repair packaging"]) == "patch"
+
+
+def test_bump_level_uses_patch_for_any_other_pr_commit():
+    assert bump_version.bump_level(["docs: update README", "ci: tune workflow"]) == "patch"
+
+
+def test_bump_level_returns_none_only_for_empty_range():
+    assert bump_version.bump_level([]) is None

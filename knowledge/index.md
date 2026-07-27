@@ -20,7 +20,7 @@ before opening raw code, given your changed files.
 ## Repo
 
 - [Repo structure](repo/structure.md) — directory layout, file-by-file map.
-- [Build, test & CI](repo/build-test-and-ci.md) — local dev loop, pytest, GitHub Actions jobs.
+- [Build, test & CI](repo/build-test-and-ci.md) — local dev loop, pytest, Claude Code automation, GitHub Actions jobs.
 
 ## Domains
 

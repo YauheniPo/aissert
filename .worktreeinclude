@@ -1,0 +1,5 @@
+# Intentionally empty.
+#
+# Use this file only for safe git-ignored files that should be copied into
+# Claude Code worktrees. Do not add .env, golden-local/, eval-runs/, or real
+# golden datasets; real data must stay outside the repository tree.

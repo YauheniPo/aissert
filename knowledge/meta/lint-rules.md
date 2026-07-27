@@ -10,7 +10,7 @@ related_pages:
   - ../index.md
   - page-template.md
   - source-inventory.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
 ---
 
 `python3 scripts/wiki/lint.py` exits 0 only if all of these are empty. Every
@@ -49,13 +49,15 @@ exists. Three triggers (`config.py`):
    far fewer tracked files, so 8 is already a broad change here.
 2. **`architectural_anchor_changed`** — any of `SIGNIFICANT_ANCHORS` (e.g.
    `DESIGN.md`, `skills/aissert/SKILL.md`, `canary/manifest.json`) or a file
-   under `SIGNIFICANT_PREFIXES` (`agents/`, `skills/aissert/scripts/`,
-   `skills/aissert/references/`) changed — these implement or gate the
-   architecture, so any change is significant regardless of size.
+   under `SIGNIFICANT_PREFIXES` (`.claude/`, `agents/`, `scripts/claude/`,
+   `skills/aissert/scripts/`, `skills/aissert/references/`) changed — these
+   implement or gate the architecture and automation, so any change is
+   significant regardless of size.
 3. **`uncovered_high_signal_path`** — a changed file under a high-signal
-   prefix (`agents/`, `skills/`, `commands/`, `golden/`, `canary/`,
-   `scripts/wiki/`, or one of `README.md`/`DESIGN.md`/`CLAUDE.md`) that no
-   wiki page's `source_paths` covers at all — a gap in wiki coverage itself.
+   prefix (`.claude/`, `agents/`, `skills/`, `commands/`, `golden/`,
+   `canary/`, `scripts/claude/`, `scripts/wiki/`, or one of
+   `README.md`/`DESIGN.md`/`CLAUDE.md`) that no wiki page's `source_paths`
+   covers at all — a gap in wiki coverage itself.
 
 No `new_src_top_level_folder` heuristic here (the ported project's fourth
 trigger) — aissert has no growing `src/` tree to watch for new top-level

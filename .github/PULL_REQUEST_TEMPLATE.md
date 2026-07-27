@@ -15,7 +15,6 @@
 
 <!-- Pick one and explain if needed. -->
 
-- [ ] No release impact (`docs:`, `test:`, `ci:`, `chore:`).
-- [ ] Patch (`fix:`).
+- [ ] Patch (default for `fix:`, `docs:`, `test:`, `ci:`, `chore:`, `refactor:`).
 - [ ] Minor (`feat:`).
 - [ ] Major (`feat!:` or other breaking change).

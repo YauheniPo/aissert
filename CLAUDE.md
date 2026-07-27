@@ -39,10 +39,33 @@ change contradicts DESIGN.md, update DESIGN.md in the same commit or stop and as
 - Orchestration logic: `skills/aissert/SKILL.md` (dispatch only, never evaluates)
 - Agent prompts: `agents/*.md` (plugin-level subagents)
 - Contracts: `skills/aissert/references/`
+- Claude dev automation: `.claude/settings.json`, `.claude/skills/`,
+  `.claude/agents/`, and `scripts/claude/`
 - Run artifacts: `eval-runs/` — gitignored, never commit
 - CI: `.github/workflows/ci.yml` (schema lint + pytest + wiki lint per PR — wiki
   lint is `continue-on-error`, informational only, never blocks; canary eval is
   manual/scheduled only — it costs money)
+
+## Claude automation
+
+- Use the `verify` skill before finishing repository edits. It checks the diff,
+  runs the relevant deterministic commands, and rejects weakened tests.
+- Use the `wiki-maintenance` skill only when wiki work is relevant or requested.
+  Stale-only wiki output is informational unless the current task touches that
+  area.
+- Dev-only helper agents live in `.claude/agents/`; runtime eval agents live in
+  `agents/` and remain part of the packaged plugin surface.
+- PreToolUse hooks block direct pushes to `main` and attempts to place real
+  golden data under the repo tree.
+- PostToolUse hooks enforce immutable plugin identity and runtime agent
+  invariants (`tools: []`, pinned judge model).
+- Stop hooks run proportional verification before ending a turn. Set
+  `AISSERT_SKIP_STOP_VERIFY=1` only for emergency local debugging, never for CI.
+- GitHub PR/issue comments can trigger `.github/workflows/claude.yml` with
+  `@claude`; it uses `.claude/settings.json`, scoped Bash allowlists, and the
+  `ANTHROPIC_API_KEY` secret.
+- `.worktreeinclude` is intentionally empty. Do not copy `.env`, `golden-local/`,
+  `eval-runs/`, or real datasets into Claude worktrees.
 
 ## Local dev loop
 
