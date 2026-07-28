@@ -67,6 +67,24 @@ Run a smoke eval against a skill:
 /aissert:eval golden_set=golden/example target_skill=<skill> --smoke
 ```
 
+## Install (for users)
+
+Simplest path — no clone, no zip download. This repo is itself a marketplace
+(`.claude-plugin/marketplace.json`), so any Claude Code user can point at it
+directly on GitHub:
+
+```
+/plugin marketplace add YauheniPo/aissert
+/plugin install aissert@aissert
+```
+
+Claude Code resolves `owner/repo` and installs from the current default
+branch. To pick up a new release later: reinstall, or
+`/plugin marketplace update aissert` if your Claude Code version supports it.
+
+This is the right option for sharing the plugin with other users/teams — they
+just need those two commands, nothing to build or host.
+
 ## Install (local dev loop)
 
 For normal use, download the plugin zip from the
@@ -101,14 +119,18 @@ the marketplace install above.
 ## Usage
 
 ```
-/aissert:eval golden_set=golden/example target_skill=<skill> iterations=3
-/aissert:eval golden_set=golden/example target_skill=<skill> --smoke   # 3 items x 2 iterations
+/aissert:eval golden_set=golden/example iterations=3
+/aissert:eval golden_set=golden/example --smoke   # 3 items x 2 iterations
 ```
 
-Thresholds default from the set's `manifest.json` (`k1` = min mean precision,
-`k2` = min mean recall); pass `k1=` / `k2=` to override. The golden set's
-`manifest.json` must name the same `target_skill` passed to `/aissert:eval`;
-the preflight validator fails before any LLM calls if they differ.
+`target_skill` is optional: if omitted, the skill to evaluate comes from the
+golden set's own `manifest.json`. Pass `target_skill=<skill>` explicitly only
+when you want the preflight validator to double-check you're pointing at the
+right dataset — it then fails before any LLM calls if the two disagree.
+
+Thresholds default from the set's `manifest.json` (`min_supported_to_total_output_facts_ratio`
+= min mean precision, `min_covered_to_total_reference_facts_ratio` = min mean recall); pass
+`min_supported_to_total_output_facts_ratio=` / `min_covered_to_total_reference_facts_ratio=` to override.
 
 Exit codes from `aggregate.py`: `0` gate passed, `1` gate failed, `2` pipeline
 error (harness broke — numbers not trustworthy).
@@ -176,7 +198,7 @@ straight to `main`, not through a PR.
 Milestones 1–4 done (contracts, deterministic aggregation, plugin scaffold,
 agent prompts, example set, canary set built and hand-reviewed). Milestone 5:
 baseline-derived thresholds — until that calibration is done for a given
-golden set, its K1/K2 defaults are uncalibrated placeholders (DESIGN.md §10).
+golden set, its min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio defaults are uncalibrated placeholders (DESIGN.md §10).
 
 ## Development
 

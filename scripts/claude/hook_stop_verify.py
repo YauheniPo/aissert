@@ -16,6 +16,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def pytest_command() -> list[str]:
+    venv_pytest = REPO_ROOT / ".venv" / "bin" / "pytest"
+    if venv_pytest.is_file():
+        return [str(venv_pytest), "tests/", "-q"]
+    return ["pytest", "tests/", "-q"]
+
+
 def run(args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         args,
@@ -116,7 +123,7 @@ def main() -> int:
 
     checks: list[tuple[str, list[str]]] = []
     if should_pytest:
-        checks.append(("pytest tests/ -q", ["pytest", "tests/", "-q"]))
+        checks.append(("pytest tests/ -q", pytest_command()))
     if should_package:
         checks.append(("python3 scripts/build_plugin_zip.py", ["python3", "scripts/build_plugin_zip.py"]))
     if should_wiki:

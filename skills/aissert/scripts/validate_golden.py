@@ -39,12 +39,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"validate_golden: invalid golden set: {e}", file=sys.stderr)
         return EXIT_PIPELINE_ERROR
 
-    total_facts = sum(len(item.golden_fact_ids) for item in golden.items)
+    total_facts = sum(len(item.reference_fact_ids) for item in golden.items)
     print(f"golden set: {args.golden_set}")
     print(f"target_skill: {golden.target_skill}")
     print(f"set_version: {golden.set_version}")
-    print(f"items: {len(golden.items)}, golden facts: {total_facts}")
-    print(f"defaults: k1={golden.defaults_k1} k2={golden.defaults_k2}")
+    print(f"items: {len(golden.items)}, reference facts: {total_facts}")
+    print(
+        f"defaults: min_supported_to_total_output_facts_ratio={golden.defaults_min_supported_to_total_output_facts_ratio} "
+        f"min_covered_to_total_reference_facts_ratio={golden.defaults_min_covered_to_total_reference_facts_ratio}"
+    )
     print(f"hash: {golden.hash}")
     return EXIT_PASS
 

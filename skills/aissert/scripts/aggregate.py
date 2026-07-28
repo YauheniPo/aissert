@@ -3,7 +3,7 @@
 
 Reads fact-extractor and judge outputs from an eval-run directory, computes
 precision (m1) and recall (m2) per run, aggregates across iterations, applies
-the k1/k2 gates and writes results.json plus report.md.
+the min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio gates and writes results.json plus report.md.
 
 All scoring math, aggregation and verdicts live here — never in an LLM.
 
@@ -22,7 +22,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 4
 
 EXIT_PASS = 0
 EXIT_GATE_FAILED = 1
@@ -43,7 +43,7 @@ class PipelineError(Exception):
 class GoldenItem:
     id: str
     snapshot: str
-    golden_fact_ids: tuple[str, ...]
+    reference_fact_ids: tuple[str, ...]
     weights: dict[str, float]
 
 
@@ -53,8 +53,8 @@ class GoldenSet:
     target_skill: str
     set_version: str
     owner: str
-    defaults_k1: float
-    defaults_k2: float
+    defaults_min_supported_to_total_output_facts_ratio: float
+    defaults_min_covered_to_total_reference_facts_ratio: float
     items: tuple[GoldenItem, ...]
     hash: str
 
@@ -65,10 +65,10 @@ class RunMetrics:
     iteration: int
     supported: int
     unsupported: int
-    total_extracted: int
+    total_output_facts: int
     covered: int
     missing: int
-    total_golden: int
+    total_reference_facts: int
     m1: float
     m2: float
     verbosity_ratio: float
@@ -136,19 +136,19 @@ def _validate_golden_item(data: dict, path: Path) -> GoldenItem:
     reference = data.get("reference")
     if not isinstance(reference, dict):
         raise PipelineError(f"{ctx}: 'reference' must be an object")
-    golden_facts = reference.get("golden_facts")
-    if not isinstance(golden_facts, list) or not golden_facts:
-        raise PipelineError(f"{ctx}: 'reference.golden_facts' must be a non-empty array")
+    reference_facts = reference.get("reference_facts")
+    if not isinstance(reference_facts, list) or not reference_facts:
+        raise PipelineError(f"{ctx}: 'reference.reference_facts' must be a non-empty array")
 
     fact_ids: list[str] = []
-    for idx, fact in enumerate(golden_facts):
-        fctx = f"{ctx}: golden_facts[{idx}]"
+    for idx, fact in enumerate(reference_facts):
+        fctx = f"{ctx}: reference_facts[{idx}]"
         if not isinstance(fact, dict):
             raise PipelineError(f"{fctx}: must be an object")
         fact_ids.append(_require_str(fact, "id", fctx))
         _require_str(fact, "text", fctx)
     if len(set(fact_ids)) != len(fact_ids):
-        raise PipelineError(f"{ctx}: duplicate golden fact ids")
+        raise PipelineError(f"{ctx}: duplicate reference fact ids")
 
     weights_raw = data.get("weights")
     if not isinstance(weights_raw, dict):
@@ -157,7 +157,7 @@ def _validate_golden_item(data: dict, path: Path) -> GoldenItem:
     if weights_raw:
         if set(weights_raw) != set(fact_ids):
             raise PipelineError(
-                f"{ctx}: non-empty weights keys must be exactly the golden fact ids"
+                f"{ctx}: non-empty weights keys must be exactly the reference fact ids"
             )
         for gid, w in weights_raw.items():
             if not isinstance(w, (int, float)) or isinstance(w, bool) or not 0 < w <= 1:
@@ -168,7 +168,7 @@ def _validate_golden_item(data: dict, path: Path) -> GoldenItem:
             raise PipelineError(f"{ctx}: weights must sum to 1.0, got {total}")
 
     return GoldenItem(
-        id=item_id, snapshot=snapshot, golden_fact_ids=tuple(fact_ids), weights=weights
+        id=item_id, snapshot=snapshot, reference_fact_ids=tuple(fact_ids), weights=weights
     )
 
 
@@ -185,9 +185,13 @@ def load_golden_set(golden_dir: Path) -> GoldenSet:
     owner = _require_str(manifest, "owner", ctx)
     defaults = manifest.get("defaults")
     if not isinstance(defaults, dict):
-        raise PipelineError(f"{ctx}: 'defaults' must be an object with k1/k2")
-    k1 = _require_threshold(defaults.get("k1"), "defaults.k1", ctx)
-    k2 = _require_threshold(defaults.get("k2"), "defaults.k2", ctx)
+        raise PipelineError(
+            f"{ctx}: 'defaults' must be an object with min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio"
+        )
+    min_supported_to_total_output_facts_ratio = _require_threshold(
+        defaults.get("min_supported_to_total_output_facts_ratio"), "defaults.min_supported_to_total_output_facts_ratio", ctx
+    )
+    min_covered_to_total_reference_facts_ratio = _require_threshold(defaults.get("min_covered_to_total_reference_facts_ratio"), "defaults.min_covered_to_total_reference_facts_ratio", ctx)
 
     items_dir = golden_dir / "items"
     item_files = sorted(items_dir.glob("*.json"))
@@ -208,8 +212,8 @@ def load_golden_set(golden_dir: Path) -> GoldenSet:
         target_skill=target_skill,
         set_version=set_version,
         owner=owner,
-        defaults_k1=k1,
-        defaults_k2=k2,
+        defaults_min_supported_to_total_output_facts_ratio=min_supported_to_total_output_facts_ratio,
+        defaults_min_covered_to_total_reference_facts_ratio=min_covered_to_total_reference_facts_ratio,
         items=tuple(items),
         hash=golden_set_hash(golden_dir),
     )
@@ -219,7 +223,7 @@ def load_golden_set(golden_dir: Path) -> GoldenSet:
 
 
 def validate_facts(data: dict, ctx: str) -> list[str]:
-    """Validate a facts.json payload; return extracted fact ids (may be empty)."""
+    """Validate a facts.json payload; return output fact ids (may be empty)."""
     facts = data.get("facts")
     if not isinstance(facts, list):
         raise PipelineError(f"{ctx}: 'facts' must be an array")
@@ -268,7 +272,7 @@ def _validate_verdict_list(
 
 
 def validate_verdicts_m1(data: dict, fact_ids: list[str], ctx: str) -> int:
-    """Validate judge-precision output; return the supported count."""
+    """Validate judge-supported-output-facts output; return the supported count."""
     by_id = _validate_verdict_list(data, "fact_id", fact_ids, M1_VERDICTS, ctx)
     for vid, v in by_id.items():
         _require_str(v, "evidence", f"{ctx}: verdict for {vid!r}")
@@ -276,10 +280,10 @@ def validate_verdicts_m1(data: dict, fact_ids: list[str], ctx: str) -> int:
 
 
 def validate_verdicts_m2(
-    data: dict, golden_ids: list[str], fact_ids: list[str], ctx: str
+    data: dict, reference_ids: list[str], fact_ids: list[str], ctx: str
 ) -> set[str]:
-    """Validate judge-recall output; return covered golden fact ids."""
-    by_id = _validate_verdict_list(data, "golden_fact_id", golden_ids, M2_VERDICTS, ctx)
+    """Validate judge-expected-output-facts output; return covered reference fact ids."""
+    by_id = _validate_verdict_list(data, "reference_fact_id", reference_ids, M2_VERDICTS, ctx)
     known_facts = set(fact_ids)
     covered: set[str] = set()
     for gid, v in by_id.items():
@@ -287,13 +291,13 @@ def validate_verdicts_m2(
         if v["verdict"] == "covered":
             if not isinstance(covered_by, str) or covered_by not in known_facts:
                 raise PipelineError(
-                    f"{ctx}: covered golden fact {gid!r} must reference an extracted "
+                    f"{ctx}: covered reference fact {gid!r} must reference an output "
                     f"fact id via 'covered_by', got {covered_by!r}"
                 )
             covered.add(gid)
         elif covered_by is not None:
             raise PipelineError(
-                f"{ctx}: missing golden fact {gid!r} must not set 'covered_by'"
+                f"{ctx}: missing reference fact {gid!r} must not set 'covered_by'"
             )
     return covered
 
@@ -313,10 +317,10 @@ def extraction_sanity_check(fact_counts: dict[tuple[str, int], int]) -> list[str
         for iteration in sorted(counts):
             count = counts[iteration]
             if count == 0:
-                problems.append(f"{item_id}/{iteration}: 0 extracted facts")
+                problems.append(f"{item_id}/{iteration}: 0 output facts")
             elif count * SANITY_MEDIAN_FACTOR < median:
                 problems.append(
-                    f"{item_id}/{iteration}: {count} extracted facts is below 1/3 "
+                    f"{item_id}/{iteration}: {count} output facts is below 1/3 "
                     f"of the item median ({median})"
                 )
     return problems
@@ -325,37 +329,37 @@ def extraction_sanity_check(fact_counts: dict[tuple[str, int], int]) -> list[str
 def compute_run_metrics(
     item: GoldenItem,
     iteration: int,
-    total_extracted: int,
+    total_output_facts: int,
     supported: int,
     covered_ids: set[str],
 ) -> RunMetrics:
-    if total_extracted <= 0:
+    if total_output_facts <= 0:
         raise PipelineError(
-            f"{item.id}/{iteration}: cannot compute m1 with 0 extracted facts"
+            f"{item.id}/{iteration}: cannot compute m1 with 0 output facts"
         )
-    total_golden = len(item.golden_fact_ids)
-    if total_golden <= 0:
-        raise PipelineError(f"{item.id}/{iteration}: golden item has no golden facts")
+    total_reference_facts = len(item.reference_fact_ids)
+    if total_reference_facts <= 0:
+        raise PipelineError(f"{item.id}/{iteration}: golden item has no reference facts")
     if item.weights:
         m2 = sum(item.weights[gid] for gid in covered_ids)
     else:
-        m2 = len(covered_ids) / total_golden
+        m2 = len(covered_ids) / total_reference_facts
     return RunMetrics(
         item_id=item.id,
         iteration=iteration,
         supported=supported,
-        unsupported=total_extracted - supported,
-        total_extracted=total_extracted,
+        unsupported=total_output_facts - supported,
+        total_output_facts=total_output_facts,
         covered=len(covered_ids),
-        missing=total_golden - len(covered_ids),
-        total_golden=total_golden,
-        m1=supported / total_extracted,
+        missing=total_reference_facts - len(covered_ids),
+        total_reference_facts=total_reference_facts,
+        m1=supported / total_output_facts,
         m2=m2,
-        verbosity_ratio=total_extracted / total_golden,
+        verbosity_ratio=total_output_facts / total_reference_facts,
     )
 
 
-def summarize(runs: list[RunMetrics], k1: float, k2: float) -> dict:
+def summarize(runs: list[RunMetrics], min_supported_to_total_output_facts_ratio: float, min_covered_to_total_reference_facts_ratio: float) -> dict:
     if not runs:
         raise PipelineError("no runs to aggregate")
 
@@ -368,8 +372,16 @@ def summarize(runs: list[RunMetrics], k1: float, k2: float) -> dict:
     m1_stats = stats([r.m1 for r in runs])
     m2_stats = stats([r.m2 for r in runs])
     gates = {
-        "m1": {"mean": m1_stats["mean"], "threshold": k1, "pass": m1_stats["mean"] >= k1},
-        "m2": {"mean": m2_stats["mean"], "threshold": k2, "pass": m2_stats["mean"] >= k2},
+        "m1": {
+            "mean": m1_stats["mean"],
+            "threshold": min_supported_to_total_output_facts_ratio,
+            "pass": m1_stats["mean"] >= min_supported_to_total_output_facts_ratio,
+        },
+        "m2": {
+            "mean": m2_stats["mean"],
+            "threshold": min_covered_to_total_reference_facts_ratio,
+            "pass": m2_stats["mean"] >= min_covered_to_total_reference_facts_ratio,
+        },
     }
     return {
         "summary": {
@@ -433,7 +445,7 @@ def collect_runs(run_dir: Path, golden: GoldenSet, iterations: int) -> list[RunM
         m2_ctx = f"verdicts {item.id}/{i}-m2"
         supported = validate_verdicts_m1(_load_json(m1_path, m1_ctx), fact_ids, m1_ctx)
         covered = validate_verdicts_m2(
-            _load_json(m2_path, m2_ctx), list(item.golden_fact_ids), fact_ids, m2_ctx
+            _load_json(m2_path, m2_ctx), list(item.reference_fact_ids), fact_ids, m2_ctx
         )
         runs.append(compute_run_metrics(item, i, len(fact_ids), supported, covered))
     runs.sort(key=lambda r: (r.item_id, r.iteration))
@@ -441,27 +453,35 @@ def collect_runs(run_dir: Path, golden: GoldenSet, iterations: int) -> list[RunM
 
 
 def resolve_thresholds(
-    cli_k1: float | None, cli_k2: float | None, golden: GoldenSet
+    cli_min_supported_to_total_output_facts_ratio: float | None, cli_min_covered_to_total_reference_facts_ratio: float | None, golden: GoldenSet
 ) -> tuple[float, float, dict[str, str]]:
-    k1 = golden.defaults_k1 if cli_k1 is None else _require_threshold(cli_k1, "k1", "cli")
-    k2 = golden.defaults_k2 if cli_k2 is None else _require_threshold(cli_k2, "k2", "cli")
+    min_supported_to_total_output_facts_ratio = (
+        golden.defaults_min_supported_to_total_output_facts_ratio
+        if cli_min_supported_to_total_output_facts_ratio is None
+        else _require_threshold(cli_min_supported_to_total_output_facts_ratio, "min_supported_to_total_output_facts_ratio", "cli")
+    )
+    min_covered_to_total_reference_facts_ratio = (
+        golden.defaults_min_covered_to_total_reference_facts_ratio
+        if cli_min_covered_to_total_reference_facts_ratio is None
+        else _require_threshold(cli_min_covered_to_total_reference_facts_ratio, "min_covered_to_total_reference_facts_ratio", "cli")
+    )
     source = {
-        "k1": "manifest" if cli_k1 is None else "cli",
-        "k2": "manifest" if cli_k2 is None else "cli",
+        "min_supported_to_total_output_facts_ratio": "manifest" if cli_min_supported_to_total_output_facts_ratio is None else "cli",
+        "min_covered_to_total_reference_facts_ratio": "manifest" if cli_min_covered_to_total_reference_facts_ratio is None else "cli",
     }
-    return k1, k2, source
+    return min_supported_to_total_output_facts_ratio, min_covered_to_total_reference_facts_ratio, source
 
 
 def build_results(
     golden: GoldenSet,
     runs: list[RunMetrics],
-    k1: float,
-    k2: float,
+    min_supported_to_total_output_facts_ratio: float,
+    min_covered_to_total_reference_facts_ratio: float,
     threshold_source: dict[str, str],
     iterations: int,
     model_id: str | None,
 ) -> dict:
-    aggregate = summarize(runs, k1, k2)
+    aggregate = summarize(runs, min_supported_to_total_output_facts_ratio, min_covered_to_total_reference_facts_ratio)
     return {
         "schema_version": SCHEMA_VERSION,
         "target_skill": golden.target_skill,
@@ -473,7 +493,11 @@ def build_results(
         },
         "model_id": model_id,
         "iterations": iterations,
-        "thresholds": {"k1": k1, "k2": k2, "source": threshold_source},
+        "thresholds": {
+            "min_supported_to_total_output_facts_ratio": min_supported_to_total_output_facts_ratio,
+            "min_covered_to_total_reference_facts_ratio": min_covered_to_total_reference_facts_ratio,
+            "source": threshold_source,
+        },
         "runs": [
             {
                 "item_id": r.item_id,
@@ -481,13 +505,13 @@ def build_results(
                 "m1": {
                     "supported": r.supported,
                     "unsupported": r.unsupported,
-                    "total_extracted": r.total_extracted,
+                    "total_output_facts": r.total_output_facts,
                     "value": r.m1,
                 },
                 "m2": {
                     "covered": r.covered,
                     "missing": r.missing,
-                    "total_golden": r.total_golden,
+                    "total_reference_facts": r.total_reference_facts,
                     "value": r.m2,
                 },
                 "verbosity_ratio": r.verbosity_ratio,
@@ -530,7 +554,7 @@ def build_report(results: dict) -> str:
             "",
             "## Runs",
             "",
-            "| Item | Iteration | m1 | m2 | Extracted | Golden | Verbosity |",
+            "| Item | Iteration | m1 | m2 | Output Facts | Reference Facts | Verbosity |",
             "|---|---:|---:|---:|---:|---:|---:|",
         ]
     )
@@ -538,7 +562,7 @@ def build_report(results: dict) -> str:
         lines.append(
             f"| {run['item_id']} | {run['iteration']} | "
             f"{run['m1']['value']:.4f} | {run['m2']['value']:.4f} | "
-            f"{run['m1']['total_extracted']} | {run['m2']['total_golden']} | "
+            f"{run['m1']['total_output_facts']} | {run['m2']['total_reference_facts']} | "
             f"{run['verbosity_ratio']:.4f} |"
         )
     lines.append("")
@@ -552,8 +576,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", required=True, type=Path, help="eval-run directory")
     parser.add_argument("--golden-set", required=True, type=Path, help="golden set directory")
     parser.add_argument("--iterations", required=True, type=int, help="iterations per item (1-based files)")
-    parser.add_argument("--k1", type=float, default=None, help="min mean precision; overrides manifest")
-    parser.add_argument("--k2", type=float, default=None, help="min mean recall; overrides manifest")
+    parser.add_argument("--min-supported-to-total-output-facts-ratio", type=float, default=None, help="min mean precision; overrides manifest")
+    parser.add_argument("--min-covered-to-total-reference-facts-ratio", type=float, default=None, help="min mean recall; overrides manifest")
     parser.add_argument("--model-id", default=None, help="target-skill model id, recorded in results.json")
     args = parser.parse_args(argv)
 
@@ -561,9 +585,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.iterations < 1:
             raise PipelineError(f"--iterations must be >= 1, got {args.iterations}")
         golden = load_golden_set(args.golden_set)
-        k1, k2, source = resolve_thresholds(args.k1, args.k2, golden)
+        min_supported_to_total_output_facts_ratio, min_covered_to_total_reference_facts_ratio, source = resolve_thresholds(
+            args.min_supported_to_total_output_facts_ratio, args.min_covered_to_total_reference_facts_ratio, golden
+        )
         runs = collect_runs(args.run_dir, golden, args.iterations)
-        results = build_results(golden, runs, k1, k2, source, args.iterations, args.model_id)
+        results = build_results(
+            golden, runs, min_supported_to_total_output_facts_ratio, min_covered_to_total_reference_facts_ratio, source, args.iterations, args.model_id
+        )
         results_path = args.run_dir / "results.json"
         results_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
         report_path = args.run_dir / "report.md"

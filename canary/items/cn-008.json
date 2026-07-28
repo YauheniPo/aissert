@@ -9,7 +9,7 @@
     "note": "milestone-4 pilot 2026-07-21"
   },
   "input": {
-    "golden_facts": [
+    "reference_facts": [
       {
         "id": "gf1",
         "text": "The issue affects the Android app"
@@ -39,7 +39,7 @@
         "text": "Google sign-in works, only email+password login is affected"
       }
     ],
-    "extracted_facts": [
+    "output_facts": [
       {
         "id": "f1",
         "type": "expectation",
@@ -90,31 +90,31 @@
   "expected": {
     "verdicts": [
       {
-        "golden_fact_id": "gf1",
+        "reference_fact_id": "gf1",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf2",
+        "reference_fact_id": "gf2",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf3",
+        "reference_fact_id": "gf3",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf4",
+        "reference_fact_id": "gf4",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf5",
+        "reference_fact_id": "gf5",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf6",
+        "reference_fact_id": "gf6",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf7",
+        "reference_fact_id": "gf7",
         "verdict": "covered"
       }
     ]

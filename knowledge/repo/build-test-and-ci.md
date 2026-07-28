@@ -21,7 +21,7 @@ related_pages:
   - ../index.md
   - ../hotspots/aggregate-py.md
   - ../domains/change-playbooks.md
-last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 ## Local dev loop (plugin)
@@ -33,6 +33,17 @@ last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
 
 After editing `agents/*.md` or manifests: `/reload-plugins`. `SKILL.md` edits
 apply immediately, no reload needed.
+
+For other users/teams (no clone needed) — this repo doubles as its own
+marketplace (`.claude-plugin/marketplace.json`), so anyone can point at the
+GitHub repo directly instead of a local path:
+
+```
+/plugin marketplace add YauheniPo/aissert
+/plugin install aissert@aissert
+```
+
+Documented in README.md's "Install (for users)" section.
 
 Run:
 ```

@@ -4,7 +4,9 @@ Contract for golden dataset directories consumed by the aissert eval harness.
 This file is the single source of truth for the golden set format; agent prompts
 and scripts must reference it, never restate a diverging copy.
 
-Schema version: **1**
+Schema version: **4** (shared with `canary-schema.md` via aggregate.py's
+`SCHEMA_VERSION` — a bump here forces a matching bump there even when the
+canary contract itself hasn't changed)
 
 ## Directory layout
 
@@ -23,25 +25,25 @@ the filename (without `.json`) must equal the item's `id`.
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 4,
   "target_skill": "test-cases-writer",
   "set_version": "1.0.0",
   "owner": "epopovich",
   "defaults": {
-    "k1": 0.80,
-    "k2": 0.70
+    "min_supported_to_total_output_facts_ratio": 0.80,
+    "min_covered_to_total_reference_facts_ratio": 0.70
   }
 }
 ```
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `schema_version` | int | yes | Must be `1`. |
+| `schema_version` | int | yes | Must be `4`. |
 | `target_skill` | string | yes | Skill this set evaluates. Recorded in results.json. |
 | `set_version` | string | yes | Bump on any content change. Changing the set invalidates old trends. |
 | `owner` | string | yes | Person responsible for staleness review (DESIGN.md §7.6). |
-| `defaults.k1` | number in [0, 1] | yes | Default min mean precision gate. CLI value overrides. |
-| `defaults.k2` | number in [0, 1] | yes | Default min mean recall gate. CLI value overrides. |
+| `defaults.min_supported_to_total_output_facts_ratio` | number in [0, 1] | yes | Default min mean precision gate. CLI value overrides. |
+| `defaults.min_covered_to_total_reference_facts_ratio` | number in [0, 1] | yes | Default min mean recall gate. CLI value overrides. |
 
 ## Item file (`items/<id>.json`)
 
@@ -54,7 +56,7 @@ the filename (without `.json`) must equal the item's `id`.
     "snapshot": "full frozen input text the target skill receives"
   },
   "reference": {
-    "golden_facts": [
+    "reference_facts": [
       {"id": "gf1", "text": "one atomic, verifiable claim"},
       {"id": "gf2", "text": "another atomic claim"}
     ]
@@ -69,21 +71,21 @@ the filename (without `.json`) must equal the item's `id`.
 | `input.type` | string | yes | Input kind, e.g. `jira`, `text`. Open vocabulary. |
 | `input.key` | string | no | Source identifier (e.g. issue key), informational only. |
 | `input.snapshot` | non-empty string | yes | The complete frozen input. No live fetches at eval time — live inputs make the set nondeterministic. |
-| `reference.golden_facts` | non-empty array | yes | Human-reviewed atomic facts. Extracted once at set creation time, never re-extracted at eval time. |
-| `golden_facts[].id` | string | yes | Unique within the item. |
-| `golden_facts[].text` | non-empty string | yes | One fact = one verifiable claim. |
-| `weights` | object | yes | Per-golden-fact recall weights. See below. |
+| `reference.reference_facts` | non-empty array | yes | Human-reviewed atomic facts. Extracted once at set creation time, never re-extracted at eval time. |
+| `reference_facts[].id` | string | yes | Unique within the item. |
+| `reference_facts[].text` | non-empty string | yes | One fact = one verifiable claim. |
+| `weights` | object | yes | Per-reference-fact recall weights. See below. |
 
 ### Weights semantics
 
-`weights` maps golden fact id → weight and affects **recall (m2) only**:
+`weights` maps reference fact id → weight and affects **recall (m2) only**:
 
-- Empty object `{}` — uniform weighting: `m2 = covered / total_golden`.
-- Non-empty — keys must be exactly the set of golden fact ids of this item, values
+- Empty object `{}` — uniform weighting: `m2 = covered / total_reference_facts`.
+- Non-empty — keys must be exactly the set of reference fact ids of this item, values
   must be numbers in (0, 1], and must sum to 1.0 (tolerance 1e-9). Then
-  `m2 = sum of weights of covered golden facts`.
+  `m2 = sum of weights of covered reference facts`.
 
-Weights never apply to precision (m1): extracted facts vary per run and have no
+Weights never apply to precision (m1): output facts vary per run and have no
 stable identity to weight.
 
 ## Set hash

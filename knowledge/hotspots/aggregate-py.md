@@ -12,11 +12,12 @@ related_pages:
   - ../index.md
   - ../domains/eval-pipeline.md
   - ../domains/change-playbooks.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 `aggregate.py` is the most important file in the repo: it is the **only**
-place that computes m1/m2, applies the K1/K2 gate, and decides `verdict`.
+place that computes m1/m2, applies the min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio gate, and
+decides `verdict`.
 CLAUDE.md hard rule: all scoring math and pass/fail decisions live in Python,
 never delegated to an LLM.
 
@@ -44,13 +45,13 @@ measurement itself is broken.
 
 ## Key invariants to preserve when editing
 
-- `m1 = supported / total_extracted`; `m2 = covered / total_golden` (or the
+- `m1 = supported / total_output_facts`; `m2 = covered / total_reference_facts` (or the
   weighted sum when the item defines non-empty `weights`).
 - Extraction sanity check runs **before** any verdict is read: a run with 0
-  extracted facts, or `count * 3 < item_median`, is a pipeline error (2), not
+  output facts, or `count * 3 < item_median`, is a pipeline error (2), not
   a low score — garbage extraction breaks both metrics at once, so it can't
   be a "skill got worse" signal.
-- `verbosity_ratio = total_extracted / total_golden` is report-only, never a
+- `verbosity_ratio = total_output_facts / total_reference_facts` is report-only, never a
   gate — recall doesn't punish verbosity, precision punishes length
   mechanically; this is the counterweight, kept visible on purpose
   (anti-Goodhart).

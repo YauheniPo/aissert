@@ -1,6 +1,6 @@
 ---
 description: Evaluate a Claude Code skill against a golden set (LLM-as-judge, deterministic gates)
-argument-hint: golden_set=<dir> target_skill=<name> [iterations=N] [k1=0.80] [k2=0.70] [--smoke]
+argument-hint: golden_set=<dir> [target_skill=<name>] [iterations=N] [min_supported_to_total_output_facts_ratio=0.80] [min_covered_to_total_reference_facts_ratio=0.70] [--smoke]
 ---
 
 Use the `aissert` skill to run an evaluation with these arguments: $ARGUMENTS

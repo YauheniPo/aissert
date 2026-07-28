@@ -8,12 +8,12 @@ deterministic Python, never LLM.
 Status: design approved, milestones 1–4 done: 1–3 (contracts, aggregate.py +
 tests, plugin scaffold, schema-lint CI, agent prompts, scripts, synthetic
 golden/example); 4 (canary built and hand-reviewed, all items `reviewed: true`;
-a live judge rerun against a real target skill found genuine judge-precision
+a live judge rerun against a real target skill found genuine judge-supported-output-facts
 drift on borderline items, fixed via rubric + `min_agreement` relaxed to 0.90
 with evidence — see knowledge/hotspots/judges-and-canary.md). `aggregate.py`
 now writes both `results.json` and a compact `report.md`; richer evidence
-clustering remains future polish. Milestone 5 (baseline run, K1/K2 derived from
-it, report-only period, then gate) has not started — current K1/K2 in
+clustering remains future polish. Milestone 5 (baseline run, min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio derived from
+it, report-only period, then gate) has not started — current min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio in
 golden/*/manifest.json are placeholders, not calibrated. This document is the
 source of truth. If implementation needs to deviate, update this file in the
 same MR/PR.
@@ -25,17 +25,17 @@ same MR/PR.
 Holistic 0–100 LLM scores are high-variance. Instead:
 
 1. **fact-extractor** agent decomposes a skill's raw output into atomic facts (JSON).
-2. **judge-precision** agent: for each extracted fact → binary `supported/unsupported`
-   vs golden facts (metric 1 = precision / grounding).
-3. **judge-recall** agent: for each golden fact → binary `covered/missing`
+2. **judge-supported-output-facts** agent: for each extracted fact → binary `supported/unsupported`
+   vs reference facts (metric 1 = precision / grounding).
+3. **judge-expected-output-facts** agent: for each reference fact → binary `covered/missing`
    (metric 2 = recall / completeness).
 4. **aggregate.py** computes the numbers and the verdict. Exit code = CI gate.
 
 ```
 runs/{item}/{i}.md
   └─ fact-extractor        → facts.json
-       ├─ judge-precision  → verdicts_m1.json
-       └─ judge-recall     → verdicts_m2.json
+       ├─ judge-supported-output-facts  → verdicts_m1.json
+       └─ judge-expected-output-facts     → verdicts_m2.json
             └─ aggregate.py → results.json, report.md, exit code
 ```
 
@@ -48,14 +48,18 @@ hallucination clusters; `missing` facts = coverage-gap map — both with evidenc
 ```
 /aissert:eval
   golden_set: <path to dataset dir>
-  target_skill: <skill to evaluate>
+  target_skill: <skill to evaluate>   # optional, defaults to the manifest's target_skill
   iterations: N          # runs of target skill per dataset item
-  k1: 0.80               # min mean precision across iterations
-  k2: 0.70               # min mean recall across iterations
+  min_supported_to_total_output_facts_ratio: 0.80    # min mean precision across iterations
+  min_covered_to_total_reference_facts_ratio: 0.70       # min mean recall across iterations
 --smoke                  # 3 items x 2 iterations, for fast checks after skill edits
 ```
 
-Defaults for k1/k2 live in the golden set's `manifest.json`; CLI values override.
+Defaults for min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio live in the golden set's `manifest.json`;
+CLI values override.
+`target_skill` also defaults from the manifest; pass it explicitly only to get
+the preflight mismatch check (dataset vs. requested skill) in
+`validate_golden.py`.
 
 ## 3. Repository layout
 
@@ -66,8 +70,8 @@ aissert/
 │   └── marketplace.json           # repo is its own single-plugin marketplace
 ├── agents/                        # plugin-level subagents (Task tool, clean context)
 │   ├── fact-extractor.md
-│   ├── judge-precision.md
-│   └── judge-recall.md
+│   ├── judge-supported-output-facts.md
+│   └── judge-expected-output-facts.md
 ├── skills/
 │   └── aissert/
 │       ├── SKILL.md               # orchestrator: dispatch only, never evaluates
@@ -109,15 +113,15 @@ Rules:
   check in aggregate.py (fact count vs output size; 0 facts or <1/3 of the median
   across iterations = pipeline failure, NOT a skill failure).
 
-Golden-side facts are extracted ONCE at golden-set creation time, human-reviewed,
-and stored in the set (`reference.golden_facts`). Never re-extracted at eval time.
+Reference-side facts are extracted ONCE at golden-set creation time, human-reviewed,
+and stored in the set (`reference.reference_facts`). Never re-extracted at eval time.
 
-### agents/judge-precision.md (metric 1)
-- Input: facts.json + golden_facts.
+### agents/judge-supported-output-facts.md (metric 1)
+- Input: facts.json + reference_facts.
 - Output per fact: `{"fact_id","verdict":"supported|unsupported","evidence"}`.
 
-### agents/judge-recall.md (metric 2)
-- Inverse direction: per golden fact → `covered|missing` with fact_id reference.
+### agents/judge-expected-output-facts.md (metric 2)
+- Inverse direction: per reference fact → `covered|missing` with fact_id reference.
 
 Isolation (both judges): run in parallel, never see each other's verdicts, the
 thresholds, or other iterations.
@@ -128,7 +132,7 @@ Judges output NO numeric scores — binary verdicts only. All numbers come from 
 
 ```
 golden/<target-skill>/
-├── manifest.json        # target_skill, set version, default k1/k2
+├── manifest.json        # target_skill, set version, default min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio
 └── items/
     └── gs-001.json
 ```
@@ -138,15 +142,16 @@ Item:
 {
   "id": "gs-001",
   "input": {"type": "jira", "key": "...", "snapshot": "..."},
-  "reference": {"golden_facts": [{"id": "gf1", "text": "..."}]},
+  "reference": {"reference_facts": [{"id": "gf1", "text": "..."}]},
   "weights": {}
 }
 ```
 
-- `weights` are per-golden-fact recall weights and affect **m2 only**: empty `{}` =
-  uniform (`m2 = covered / total_golden`); non-empty = keys exactly the item's golden
-  fact ids, values sum to 1.0, `m2 = sum of weights of covered golden facts`. Weights
-  never apply to precision — extracted facts have no stable identity across runs.
+- `weights` are per-reference-fact recall weights and affect **m2 only**: empty `{}` =
+  uniform (`m2 = covered / total_reference_facts`); non-empty = keys exactly the item's
+  reference fact ids, values sum to 1.0, `m2 = sum of weights of covered reference
+  facts`. Weights
+  never apply to precision — output facts have no stable identity across runs.
   Full contract: references/golden-set-schema.md.
 - `input.snapshot` is mandatory — no live Jira/Confluence fetches; live inputs make
   the set nondeterministic.
@@ -156,15 +161,15 @@ Item:
 
 ## 6. Orchestrator flow (SKILL.md)
 
-1. `validate_golden.py` — fail fast: item schema, snapshot + golden_facts present,
+1. `validate_golden.py` — fail fast: item schema, snapshot + reference_facts present,
    unique ids, weights sum to 1.0. Prints set hash.
 2. Generation: per item × N iterations — subagent with ONLY the target skill and the
    input. Clean context is mandatory (the orchestrator has seen the reference).
    Output → `eval-runs/{ts}-{target}/runs/{item}/{i}.md`.
 3. Extraction, then both judges in parallel per output.
 4. `aggregate.py`:
-   - m1 = supported / total_extracted; m2 = covered / total_golden (per run)
-   - verdict = mean(m1) >= K1 AND mean(m2) >= K2
+   - m1 = supported / total_output_facts; m2 = covered / total_reference_facts (per run)
+   - verdict = mean(m1) >= min_supported_to_total_output_facts_ratio AND mean(m2) >= min_covered_to_total_reference_facts_ratio
    - reports stddev of both metrics (stability is report-only for now; may become a
      third gate later via manifest)
    - diagnostics: fact count, verbosity ratio (extracted/golden) — anti-Goodhart
@@ -196,7 +201,7 @@ Full traceability: every number resolves to a raw output + evidence without reru
 2. **Goodhart via metric asymmetry**: recall rewards fact-dumping; precision penalizes
    length. Report verbosity ratio as diagnostic even without a gate.
 3. **Model drift breaks trends**: record model id in results.json. Maintain a
-   **canary set**: 10–15 frozen judge inputs (golden facts + extracted facts) with
+   **canary set**: 10–15 frozen judge inputs (reference facts + output facts) with
    hand-labeled expected verdicts, including deliberately borderline cases. Facts
    are frozen (not raw outputs): extraction is nondeterministic, so expected
    verdicts can only be pinned to a frozen fact set — the extractor is calibrated
@@ -205,7 +210,7 @@ Full traceability: every number resolves to a raw output + evidence without reru
    the rubric, not the skill. This is the judges' regression test.
 4. **Borderline "supported" semantics** (paraphrase, granularity mismatch, partial
    overlap): calibrated via borderline canary examples, not longer instructions.
-5. **Premature blocking CI gate**: order is baseline run → derive K1/K2 from baseline
+5. **Premature blocking CI gate**: order is baseline run → derive min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio from baseline
    (not invented) → report-only for 2–3 weeks → gate only when canary is stable and
    variance is known. A flaky gate trains the team to ignore it.
 6. **Golden set ownership**: sets go stale silently as the product changes. Each set
@@ -255,7 +260,7 @@ see knowledge/domains/golden-and-canary.md).
    golden/example set.
 4. Pilot on 5–10 items; **calibration**: compare judge verdicts to hand labels; bad
    correlation → fix rubrics, not thresholds. Build the canary set from pilot outputs.
-5. Baseline run → derive default K1/K2 → report-only period → then gate. Optional:
+5. Baseline run → derive default min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio → report-only period → then gate. Optional:
    results.json → Allure launch conversion (separate CI step, not part of the skill).
 
 Priority: canary set and baseline BEFORE polishing reports — they decide whether the

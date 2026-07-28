@@ -5,8 +5,8 @@ summary: The core idea (binary fact-level verdicts instead of holistic scores), 
 source_paths:
   - DESIGN.md
   - agents/fact-extractor.md
-  - agents/judge-precision.md
-  - agents/judge-recall.md
+  - agents/judge-supported-output-facts.md
+  - agents/judge-expected-output-facts.md
   - skills/aissert/SKILL.md
   - commands/eval.md
   - skills/aissert/references/results-schema.md
@@ -15,7 +15,7 @@ related_pages:
   - ../hotspots/aggregate-py.md
   - ../hotspots/judges-and-canary.md
   - golden-and-canary.md
-last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 ## Why not a holistic 0-100 score
@@ -36,7 +36,7 @@ fact-extractor                  <- decomposes into atomic facts (JSON), NEVER se
      |  facts/{item}/{i}.json
      |------------------.
      v                   v
-judge-precision      judge-recall   <- run in parallel, isolated from each other
+judge-supported-output-facts      judge-expected-output-facts   <- run in parallel, isolated from each other
      |                   |
      v                   v
 verdicts/*-m1.json   verdicts/*-m2.json
@@ -69,8 +69,8 @@ this repo — see the model-pin playbook in
 | Agent | Job | Sees | Never sees |
 |---|---|---|---|
 | `fact-extractor` | Split one raw skill output into atomic facts | the raw output only | golden facts (would bias decomposition toward the "right" answer) |
-| `judge-precision` (m1) | Per extracted fact: `supported`/`unsupported` | extracted facts + golden facts | the other judge, thresholds, other iterations |
-| `judge-recall` (m2) | Per golden fact: `covered`/`missing` | golden facts + extracted facts | same |
+| `judge-supported-output-facts` (m1) | Per extracted fact: `supported`/`unsupported` | extracted facts + golden facts | the other judge, thresholds, other iterations |
+| `judge-expected-output-facts` (m2) | Per golden fact: `covered`/`missing` | golden facts + extracted facts | same |
 
 Each prompt's only calibration lever (besides the canary) is its decision
 rubric + anchored right/wrong examples. If a judge systematically misjudges a

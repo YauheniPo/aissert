@@ -14,7 +14,7 @@ easier to adopt, easier to debug, and harder to misuse.
   - missing owner or stale metadata;
   - snapshots that are too short to evaluate.
 - Scheduled canary workflow example for repositories with API credentials.
-- A baseline workflow that runs report-only and proposes K1/K2 thresholds from
+- A baseline workflow that runs report-only and proposes min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio thresholds from
   observed precision/recall distributions.
 
 ## Mid Term

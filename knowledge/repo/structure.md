@@ -22,7 +22,7 @@ related_pages:
   - ../index.md
   - ../domains/eval-pipeline.md
   - build-test-and-ci.md
-last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 ```
@@ -36,8 +36,8 @@ aissert/
 │   └── marketplace.json       # repo = its own single-plugin marketplace
 ├── agents/                    # subagent prompts (Task tool, clean context, tools: [])
 │   ├── fact-extractor.md
-│   ├── judge-precision.md
-│   └── judge-recall.md
+│   ├── judge-supported-output-facts.md
+│   └── judge-expected-output-facts.md
 ├── skills/aissert/
 │   ├── SKILL.md                # orchestrator: dispatch only, never evaluates
 │   ├── references/             # JSON contracts — single source of truth for formats

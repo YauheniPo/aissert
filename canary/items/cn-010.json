@@ -9,7 +9,7 @@
     "note": "milestone-4 pilot 2026-07-21"
   },
   "input": {
-    "golden_facts": [
+    "reference_facts": [
       {
         "id": "gf1",
         "text": "Switching the app language from English to Spanish makes the History tab show 'No workouts yet'"
@@ -31,7 +31,7 @@
         "text": "The issue reproduces on at least two devices (Pixel 8 phone and Galaxy Tab tablet)"
       }
     ],
-    "extracted_facts": [
+    "output_facts": [
       {
         "id": "f1",
         "type": "expectation",
@@ -92,23 +92,23 @@
   "expected": {
     "verdicts": [
       {
-        "golden_fact_id": "gf1",
+        "reference_fact_id": "gf1",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf2",
+        "reference_fact_id": "gf2",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf3",
+        "reference_fact_id": "gf3",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf4",
+        "reference_fact_id": "gf4",
         "verdict": "covered"
       },
       {
-        "golden_fact_id": "gf5",
+        "reference_fact_id": "gf5",
         "verdict": "covered"
       }
     ]

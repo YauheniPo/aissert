@@ -4,8 +4,8 @@ kind: domain
 summary: Per change-type checklist (judge prompt, aggregate.py, model pin, golden set, canary item) — what CI does NOT catch for you.
 source_paths:
   - skills/aissert/scripts/aggregate.py
-  - agents/judge-precision.md
-  - agents/judge-recall.md
+  - agents/judge-supported-output-facts.md
+  - agents/judge-expected-output-facts.md
   - agents/fact-extractor.md
   - canary/manifest.json
   - golden/example/manifest.json
@@ -15,7 +15,7 @@ related_pages:
   - eval-pipeline.md
   - ../hotspots/aggregate-py.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 Baseline for any PR, always:
@@ -77,7 +77,7 @@ every historical metric trend (DESIGN.md §3). Order matters:
    and deciding the verdict against the judge's rubric — `check_canary.py`
    enforces the flag, but it can't enforce that you actually read anything.
 2. New `borderline: true` items: verify against both possible verdicts using
-   the rubric in `agents/judge-precision.md` / `judge-recall.md` — a
+   the rubric in `agents/judge-supported-output-facts.md` / `judge-expected-output-facts.md` — a
    "borderline" item that's actually obvious under the rubric just adds
    noise, not calibration signal.
 
