@@ -23,6 +23,12 @@
             "command": "python3 scripts/claude/hook_post_tool_invariants.py",
             "timeout": 5000,
             "statusMessage": "Checking aissert invariants"
+          },
+          {
+            "type": "command",
+            "command": "python3 scripts/claude/hook_bump_golden_version.py",
+            "timeout": 5000,
+            "statusMessage": "Bumping golden set_version if items changed"
           }
         ]
       }

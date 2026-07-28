@@ -11,7 +11,11 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-AGENT_FILES = ["fact-extractor.md", "judge-precision.md", "judge-recall.md"]
+AGENT_FILES = [
+    "fact-extractor.md",
+    "judge-supported-output-facts.md",
+    "judge-expected-output-facts.md",
+]
 
 
 def parse_frontmatter(path: Path) -> dict:

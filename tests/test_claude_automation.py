@@ -1,6 +1,8 @@
 """Tests for repo-local Claude Code automation hooks and config."""
 import importlib.util
+import io
 import json
+import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -96,6 +98,110 @@ def test_wiki_stale_only_is_not_structural_stop_failure():
         }
     }
     assert not stop_verify.wiki_lint_structural_failure(json.dumps(payload))
+
+
+def test_bump_golden_version_maps_item_path_to_manifest():
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    assert hook.golden_manifest_for_item(
+        Path("golden/example/items/gs-001.json")
+    ) == Path("golden/example/manifest.json")
+    assert hook.golden_manifest_for_item(Path("golden/example/manifest.json")) is None
+    assert hook.golden_manifest_for_item(Path("canary/items/cn-001.json")) is None
+
+
+def test_bump_golden_version_treats_direct_manifest_edit_as_own_target():
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    assert hook.golden_manifest_for_edited_path(
+        Path("golden/example/manifest.json")
+    ) == Path("golden/example/manifest.json")
+    assert hook.golden_manifest_for_edited_path(
+        Path("golden/example/items/gs-001.json")
+    ) == Path("golden/example/manifest.json")
+    assert hook.golden_manifest_for_edited_path(Path("canary/manifest.json")) is None
+
+
+def test_bump_golden_version_bumps_patch():
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    assert hook.bump_patch("1.0.0") == "1.0.1"
+    assert hook.bump_patch("2.9.9") == "2.9.10"
+    assert hook.bump_patch("not-a-version") is None
+
+
+def _init_git_repo_with_manifest(tmp_path: Path, set_version: str) -> Path:
+    manifest_dir = tmp_path / "golden" / "example"
+    manifest_dir.mkdir(parents=True)
+    manifest_path = manifest_dir / "manifest.json"
+    manifest_path.write_text(json.dumps({"set_version": set_version}) + "\n", encoding="utf-8")
+    for args in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "test@example.com"],
+        ["git", "config", "user.name", "Test"],
+        ["git", "add", "-A"],
+        ["git", "commit", "-q", "-m", "init"],
+    ):
+        subprocess.run(args, cwd=tmp_path, check=True)
+    return manifest_path
+
+
+def test_bump_golden_version_is_idempotent_until_next_commit(tmp_path, monkeypatch):
+    manifest_path = _init_git_repo_with_manifest(tmp_path, "1.0.0")
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    monkeypatch.setattr(hook, "REPO_ROOT", tmp_path)
+
+    rel_manifest = Path("golden/example/manifest.json")
+    assert hook.maybe_bump(rel_manifest) == "1.0.1"
+    assert json.loads(manifest_path.read_text(encoding="utf-8"))["set_version"] == "1.0.1"
+
+    # Same working-tree session, no new commit yet: must not bump again.
+    assert hook.maybe_bump(rel_manifest) is None
+    assert json.loads(manifest_path.read_text(encoding="utf-8"))["set_version"] == "1.0.1"
+
+
+def test_bump_golden_version_hook_main_bumps_on_item_write(tmp_path, monkeypatch, capsys):
+    manifest_path = _init_git_repo_with_manifest(tmp_path, "1.0.0")
+    (tmp_path / "golden" / "example" / "items").mkdir()
+    item_path = tmp_path / "golden" / "example" / "items" / "gs-001.json"
+    item_path.write_text("{}", encoding="utf-8")
+
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    monkeypatch.setattr(hook, "REPO_ROOT", tmp_path)
+
+    payload = {"tool_name": "Write", "tool_input": {"file_path": str(item_path)}}
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+
+    assert hook.main() == 0
+    assert json.loads(manifest_path.read_text(encoding="utf-8"))["set_version"] == "1.0.1"
+    assert "bumped golden/example/manifest.json -> 1.0.1" in capsys.readouterr().out
+
+
+def test_bump_golden_version_hook_main_bumps_on_direct_manifest_edit(tmp_path, monkeypatch, capsys):
+    manifest_path = _init_git_repo_with_manifest(tmp_path, "1.0.0")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["defaults"] = {"min_supported_to_total_output_facts_ratio": 0.85, "min_covered_to_total_reference_facts_ratio": 0.70}
+    manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    monkeypatch.setattr(hook, "REPO_ROOT", tmp_path)
+
+    payload = {"tool_name": "Edit", "tool_input": {"file_path": str(manifest_path)}}
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+
+    assert hook.main() == 0
+    updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert updated["set_version"] == "1.0.1"
+    assert updated["defaults"] == {"min_supported_to_total_output_facts_ratio": 0.85, "min_covered_to_total_reference_facts_ratio": 0.70}
+    assert "bumped golden/example/manifest.json -> 1.0.1" in capsys.readouterr().out
+
+
+def test_bump_golden_version_hook_ignores_unrelated_tools(tmp_path, monkeypatch):
+    _init_git_repo_with_manifest(tmp_path, "1.0.0")
+    hook = load_module("scripts/claude/hook_bump_golden_version.py")
+    monkeypatch.setattr(hook, "REPO_ROOT", tmp_path)
+
+    payload = {"tool_name": "Read", "tool_input": {"file_path": "golden/example/items/gs-001.json"}}
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+
+    assert hook.main() == 0
 
 
 def test_wiki_structural_issue_blocks_stop():

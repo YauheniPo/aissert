@@ -13,8 +13,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_AGENT_FILES = [
     REPO_ROOT / "agents" / "fact-extractor.md",
-    REPO_ROOT / "agents" / "judge-precision.md",
-    REPO_ROOT / "agents" / "judge-recall.md",
+    REPO_ROOT / "agents" / "judge-supported-output-facts.md",
+    REPO_ROOT / "agents" / "judge-expected-output-facts.md",
 ]
 
 

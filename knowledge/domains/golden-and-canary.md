@@ -11,7 +11,7 @@ related_pages:
   - ../index.md
   - eval-pipeline.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 ## The distinction that matters
@@ -31,11 +31,11 @@ and not know it.
 
 ```
 golden/<target-skill>/
-├── manifest.json        # target_skill, set_version, owner, defaults.{k1,k2}
-└── items/gs-001.json    # id, input.snapshot (frozen, no live fetches), reference.golden_facts, weights
+├── manifest.json        # target_skill, set_version, owner, defaults.{min_supported_to_total_output_facts_ratio,min_covered_to_total_reference_facts_ratio}
+└── items/gs-001.json    # id, input.snapshot (frozen, no live fetches), reference.reference_facts, weights
 ```
 
-`golden_facts` are extracted once at set-creation time and human-reviewed —
+`reference_facts` are extracted once at set-creation time and human-reviewed —
 never re-extracted at eval time (would make the harness grade the
 fact-extractor against itself). `weights` affects **recall (m2) only**;
 empty `{}` = uniform. Set hash (SHA-256 over manifest + all items) links a

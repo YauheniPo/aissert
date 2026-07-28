@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import aggregate
 import check_canary
 from aggregate import EXIT_GATE_FAILED, EXIT_PASS, EXIT_PIPELINE_ERROR, PipelineError
 from check_canary import CanaryItem, compare_item, load_canary_set
@@ -13,7 +14,7 @@ from test_aggregate import write_json
 
 def canary_item_payload(item_id, judge="precision", expected=None, reviewed=True,
                         borderline=False):
-    id_key = "fact_id" if judge == "precision" else "golden_fact_id"
+    id_key = "fact_id" if judge == "precision" else "reference_fact_id"
     expected = expected or {"f1": "supported"}
     return {
         "id": item_id,
@@ -21,8 +22,8 @@ def canary_item_payload(item_id, judge="precision", expected=None, reviewed=True
         "borderline": borderline,
         "reviewed": reviewed,
         "source": {"note": "synthetic"},
-        "input": {"golden_facts": [{"id": "gf1", "text": "g"}],
-                  "extracted_facts": [{"id": "f1", "type": "t", "text": "e"}]},
+        "input": {"reference_facts": [{"id": "gf1", "text": "g"}],
+                  "output_facts": [{"id": "f1", "type": "t", "text": "e"}]},
         "expected": {"verdicts": [{id_key: vid, "verdict": v} for vid, v in expected.items()]},
     }
 
@@ -30,7 +31,8 @@ def canary_item_payload(item_id, judge="precision", expected=None, reviewed=True
 def make_canary(tmp_path, items, min_agreement=1.0):
     cdir = tmp_path / "canary"
     write_json(cdir / "manifest.json",
-               {"schema_version": 1, "description": "test", "min_agreement": min_agreement})
+               {"schema_version": aggregate.SCHEMA_VERSION, "description": "test",
+                "min_agreement": min_agreement})
     for item in items:
         write_json(cdir / "items" / f"{item['id']}.json", item)
     return cdir
@@ -59,7 +61,7 @@ def test_bad_judge_kind_rejected(tmp_path):
         load_canary_set(cdir)
 
 
-def test_recall_item_uses_golden_fact_id_and_enum(tmp_path):
+def test_recall_item_uses_reference_fact_id_and_enum(tmp_path):
     payload = canary_item_payload("cn-001", judge="recall", expected={"gf1": "covered"})
     cdir = make_canary(tmp_path, [payload])
     _, items = load_canary_set(cdir)
@@ -83,7 +85,7 @@ def test_min_agreement_validated(tmp_path):
 def test_canary_manifest_schema_version_required(tmp_path):
     cdir = make_canary(tmp_path, [canary_item_payload("cn-001")])
     manifest = json.loads((cdir / "manifest.json").read_text())
-    manifest["schema_version"] = 2
+    manifest["schema_version"] = aggregate.SCHEMA_VERSION + 1
     write_json(cdir / "manifest.json", manifest)
     with pytest.raises(PipelineError, match="schema_version"):
         load_canary_set(cdir)
@@ -130,7 +132,7 @@ def test_main_pass(tmp_path, capsys):
     ])
     vdir = tmp_path / "actual"
     write_actual(vdir, "cn-001", {"f1": "supported", "f2": "unsupported"})
-    write_actual(vdir, "cn-002", {"gf1": "covered"}, id_key="golden_fact_id")
+    write_actual(vdir, "cn-002", {"gf1": "covered"}, id_key="reference_fact_id")
     code = check_canary.main(["--canary-set", str(cdir), "--verdicts-dir", str(vdir)])
     assert code == EXIT_PASS
     assert "agreement=1.0000" in capsys.readouterr().out
@@ -194,7 +196,7 @@ def test_repo_canary_items_are_structurally_valid():
         assert data["judge"] in ("precision", "recall")
         assert isinstance(data["reviewed"], bool)
         assert data["expected"]["verdicts"], f"{f.name}: empty expected verdicts"
-        assert data["input"]["golden_facts"] and data["input"]["extracted_facts"]
+        assert data["input"]["reference_facts"] and data["input"]["output_facts"]
     borderline = [f for f in files
                   if json.loads(f.read_text(encoding="utf-8"))["borderline"]]
     assert borderline, "canary must include deliberately borderline cases"

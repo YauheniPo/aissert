@@ -14,7 +14,7 @@
 
 ### aggregate.py (the math engine)
 - Verdict logic (fact-level binary gates) must be mathematically sound.
-- K1/K2 thresholds: check DESIGN.md §10 for calibration status.
+- min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio thresholds: check DESIGN.md §10 for calibration status.
 - Exit codes: 0 = gate passed, 1 = gate failed, 2 = pipeline error.
 - Changes require unit tests in `tests/test_aggregate.py`.
 

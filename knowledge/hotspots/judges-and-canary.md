@@ -3,8 +3,8 @@ title: Judges & canary review
 kind: hotspot
 summary: How judge prompts get calibrated (rubric + anchored examples), the hand-review workflow, and a live canary FAIL on 2026-07-21 that led to a rubric fix plus a min_agreement relaxation (1.0 -> 0.90).
 source_paths:
-  - agents/judge-precision.md
-  - agents/judge-recall.md
+  - agents/judge-supported-output-facts.md
+  - agents/judge-expected-output-facts.md
   - agents/fact-extractor.md
   - canary
   - skills/aissert/references/canary-schema.md
@@ -14,7 +14,7 @@ related_pages:
   - ../domains/golden-and-canary.md
   - ../domains/change-playbooks.md
   - ../status.md
-last_validated_commit: ca8ccd58befefbf93978a8b8de609aeedf85f1ac
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 ## Hand review: done 2026-07-21
@@ -51,7 +51,7 @@ verdict, don't assume "reviewed: true" alone means the judges currently pass.
    own atomic fact, correctly `unsupported`. `cn-003`/`f3` bundled the same
    categorization together with the grounded "data not deleted" clause into
    one fact, and was marked `supported` — letting the grounded half of a
-   compound fact excuse the ungrounded half. Per `judge-precision.md`'s own
+   compound fact excuse the ungrounded half. Per `judge-supported-output-facts.md`'s own
    rubric ("a partially supported claim is unsupported"), the whole fact
    should be `unsupported`. Fixed. **Standing precedent:** a diagnosis/
    categorization inferred from golden facts but not literally stated by them
@@ -61,14 +61,14 @@ verdict, don't assume "reviewed: true" alone means the judges currently pass.
 3. **Structural gap, now closed: `cn-013` added.** All 6 original `judge:
    recall` items were `covered` on every golden fact — zero `missing`
    verdicts anywhere in the canary. That left the `missing` code path in
-   `judge-recall` completely uncalibrated: a judge that started saying
+   `judge-expected-output-facts` completely uncalibrated: a judge that started saying
    `covered` for everything would have sailed through. `cn-013` (synthetic,
    built for this review, not a pilot output) adds one golden fact with no
    matching extracted fact at all (`gf6`, "the defect is a 4.0 regression")
    and one with only a weaker/vaguer form present (`gf3`, "reproduces 10/10
    on build 4.0.0-b3" vs. an extracted fact that only says "highly
    reproducible") — both expected `missing`, exercising both sub-cases in
-   `judge-recall.md`'s rubric.
+   `judge-expected-output-facts.md`'s rubric.
 
 ## The rubric IS the calibration mechanism
 
@@ -76,7 +76,8 @@ There is no numeric tuning knob for a judge. The only two levers are: (1)
 the decision rubric + anchored right/wrong examples in `agents/judge-*.md`,
 and (2) the canary set that catches when the model stops following that
 rubric. If a judge is systematically wrong on some class of input, the fix
-is always "add/adjust a rubric example," never "adjust K1/K2" — thresholds
+is always "add/adjust a rubric example," never "adjust
+min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio" — thresholds
 live in `golden/*/manifest.json` and are about the skill, not the judge.
 
 ## `precision`'s "added specificity" rule, worked
@@ -102,13 +103,13 @@ unstated is exactly what `unsupported` exists to catch.
 
 ## Review workflow for an unreviewed canary item
 
-1. Read `input.golden_facts` and `input.extracted_facts` — these are frozen,
+1. Read `input.reference_facts` and `input.output_facts` — these are frozen,
    don't regenerate them.
 2. For `judge: precision` items: decide `supported`/`unsupported` per
-   extracted fact using the rubric in `agents/judge-precision.md` (the "added
+   extracted fact using the rubric in `agents/judge-supported-output-facts.md` (the "added
    specificity" example above is the sharpest edge case to get right). For
    `judge: recall` items: decide `covered`/`missing` per golden fact using
-   `agents/judge-recall.md`.
+   `agents/judge-expected-output-facts.md`.
 3. Correct `expected.verdicts` if the pilot got it wrong — don't just rubber
    -stamp the pre-fill.
 4. Set `reviewed: true` only after doing 1-3 for real.
@@ -123,7 +124,7 @@ a full canary re-run (any judge prompt change, any model-pin change).
 Running `/aissert:aissert` against a real target skill (`allure-launch-analysis`)
 triggered step 0 for the first time since the milestone-4 review, and it
 failed: `agreement=0.9245` against `min_agreement=1.0`, 8/106 mismatches, all
-in `judge-precision`, all on `borderline: true` items (`cn-001`..`cn-004`).
+in `judge-supported-output-facts`, all on `borderline: true` items (`cn-001`..`cn-004`).
 
 **Rubric fix (lever 1).** Two of the mismatch patterns were genuinely new
 (not the ones fixed during the hand review above):
@@ -133,13 +134,13 @@ in `judge-precision`, all on `borderline: true` items (`cn-001`..`cn-004`).
   that never states that combination as a workaround anywhere. Judged as
   entailed when it's actually synthesis.
 - **The diagnostic-characterization precedent (finding 2, above) was
-  documented but never encoded in the prompt.** `judge-precision.md` had no
+  documented but never encoded in the prompt.** `judge-supported-output-facts.md` had no
   rubric line for it — it only existed as review-notes knowledge. That's why
   the live judge re-made the same mistake on `cn-003`/`f3` (again) despite the
   precedent being "resolved" in this doc since the pilot review.
 
 Added two rubric bullets + two anchored examples to
-`agents/judge-precision.md` for both patterns, plus a line warning against
+`agents/judge-supported-output-facts.md` for both patterns, plus a line warning against
 fabricating support for a named entity by citing unrelated golden facts.
 Rerunning the 6 precision items against the patched prompt: 3 of the 8
 original mismatches fixed (`cn-003/f1`, `cn-003/f3`, `cn-004/f6`), but
@@ -148,11 +149,11 @@ same reasoning text, unchanged by the new anchored examples — and **new**
 mismatches appeared on facts that were correct in the first run
 (`cn-003/f4`, `cn-004/f5`). Net: 7/106 mismatches on identical frozen inputs,
 different composition. This is the first live evidence that a subset of
-`judge-precision`'s borderline calls are model-stochastic, not purely
+`judge-supported-output-facts`'s borderline calls are model-stochastic, not purely
 rubric-driven — the same input can flip either direction run to run.
 
-**Threshold relaxation (lever 2).** `judge-recall` had zero variance across
-both runs (42/42 both times) — only `judge-precision`'s borderline items
+**Threshold relaxation (lever 2).** `judge-expected-output-facts` had zero variance across
+both runs (42/42 both times) — only `judge-supported-output-facts`'s borderline items
 oscillate. Per the exception already written into
 [golden-and-canary.md](../domains/golden-and-canary.md) ("relax only with
 evidence a specific borderline case legitimately oscillates"), this qualifies:

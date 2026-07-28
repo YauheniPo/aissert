@@ -36,7 +36,7 @@ def golden_item_payload(item_id, n_facts, weights=None):
         "id": item_id,
         "input": {"type": "text", "snapshot": "synthetic input"},
         "reference": {
-            "golden_facts": [
+            "reference_facts": [
                 {"id": f"gf{k}", "text": f"golden fact {k}"}
                 for k in range(1, n_facts + 1)
             ]
@@ -45,16 +45,16 @@ def golden_item_payload(item_id, n_facts, weights=None):
     }
 
 
-def make_golden(tmp_path, items, k1=0.8, k2=0.7):
+def make_golden(tmp_path, items, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7):
     gdir = tmp_path / "golden"
     write_json(
         gdir / "manifest.json",
         {
-            "schema_version": 1,
+            "schema_version": aggregate.SCHEMA_VERSION,
             "target_skill": "demo-skill",
             "set_version": "1.0.0",
             "owner": "test",
-            "defaults": {"k1": k1, "k2": k2},
+            "defaults": {"min_supported_to_total_output_facts_ratio": min_supported_to_total_output_facts_ratio, "min_covered_to_total_reference_facts_ratio": min_covered_to_total_reference_facts_ratio},
         },
     )
     for item in items:
@@ -90,10 +90,10 @@ def m2_payload(n_golden, covered_ids, covered_by="f1"):
         gid = f"gf{k}"
         if gid in covered_ids:
             verdicts.append(
-                {"golden_fact_id": gid, "verdict": "covered", "covered_by": covered_by}
+                {"reference_fact_id": gid, "verdict": "covered", "covered_by": covered_by}
             )
         else:
-            verdicts.append({"golden_fact_id": gid, "verdict": "missing"})
+            verdicts.append({"reference_fact_id": gid, "verdict": "missing"})
     return {"verdicts": verdicts}
 
 
@@ -113,7 +113,7 @@ def item(n_golden=4, weights=None, item_id="gs-001"):
     return GoldenItem(
         id=item_id,
         snapshot="synthetic input",
-        golden_fact_ids=tuple(f"gf{k}" for k in range(1, n_golden + 1)),
+        reference_fact_ids=tuple(f"gf{k}" for k in range(1, n_golden + 1)),
         weights=weights or {},
     )
 
@@ -122,7 +122,7 @@ def item(n_golden=4, weights=None, item_id="gs-001"):
 
 
 def test_m1_m2_computation():
-    r = compute_run_metrics(item(n_golden=4), 1, total_extracted=10, supported=8,
+    r = compute_run_metrics(item(n_golden=4), 1, total_output_facts=10, supported=8,
                             covered_ids={"gf1", "gf2", "gf3"})
     assert r.m1 == 0.8
     assert r.m2 == 0.75
@@ -133,22 +133,22 @@ def test_m1_m2_computation():
 
 def test_weighted_recall():
     weights = {"gf1": 0.7, "gf2": 0.1, "gf3": 0.1, "gf4": 0.1}
-    r = compute_run_metrics(item(weights=weights), 1, total_extracted=5, supported=5,
+    r = compute_run_metrics(item(weights=weights), 1, total_output_facts=5, supported=5,
                             covered_ids={"gf1"})
     assert r.m2 == pytest.approx(0.7)
     assert r.covered == 1
     assert r.missing == 3
 
 
-def test_zero_extracted_facts_is_pipeline_error():
-    with pytest.raises(PipelineError, match="0 extracted facts"):
-        compute_run_metrics(item(), 1, total_extracted=0, supported=0, covered_ids=set())
+def test_zero_output_facts_is_pipeline_error():
+    with pytest.raises(PipelineError, match="0 output facts"):
+        compute_run_metrics(item(), 1, total_output_facts=0, supported=0, covered_ids=set())
 
 
-def test_zero_golden_facts_is_pipeline_error():
-    empty = GoldenItem(id="gs-x", snapshot="s", golden_fact_ids=(), weights={})
-    with pytest.raises(PipelineError, match="no golden facts"):
-        compute_run_metrics(empty, 1, total_extracted=5, supported=5, covered_ids=set())
+def test_zero_reference_facts_is_pipeline_error():
+    empty = GoldenItem(id="gs-x", snapshot="s", reference_fact_ids=(), weights={})
+    with pytest.raises(PipelineError, match="no reference facts"):
+        compute_run_metrics(empty, 1, total_output_facts=5, supported=5, covered_ids=set())
 
 
 # --------------------------------------------------------------- summarize
@@ -156,14 +156,14 @@ def test_zero_golden_facts_is_pipeline_error():
 
 def test_verdict_pass_at_exact_thresholds():
     runs = [compute_run_metrics(item(n_golden=10), 1, 10, 8, {f"gf{k}" for k in range(1, 8)})]
-    result = summarize(runs, k1=0.8, k2=0.7)
+    result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["verdict"] == "pass"
     assert result["gates"]["m1"]["pass"] and result["gates"]["m2"]["pass"]
 
 
 def test_verdict_fail_on_m1_only():
     runs = [compute_run_metrics(item(n_golden=10), 1, 10, 7, {f"gf{k}" for k in range(1, 11)})]
-    result = summarize(runs, k1=0.8, k2=0.7)
+    result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["verdict"] == "fail"
     assert not result["gates"]["m1"]["pass"]
     assert result["gates"]["m2"]["pass"]
@@ -171,7 +171,7 @@ def test_verdict_fail_on_m1_only():
 
 def test_verdict_fail_on_m2_only():
     runs = [compute_run_metrics(item(n_golden=10), 1, 10, 10, {"gf1", "gf2"})]
-    result = summarize(runs, k1=0.8, k2=0.7)
+    result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["verdict"] == "fail"
     assert result["gates"]["m1"]["pass"]
     assert not result["gates"]["m2"]["pass"]
@@ -183,7 +183,7 @@ def test_mean_and_stddev_across_runs():
         compute_run_metrics(it, 1, 10, 6, {"gf1", "gf2"}),   # m1=0.6 m2=0.5
         compute_run_metrics(it, 2, 10, 10, {"gf1", "gf2", "gf3", "gf4"}),  # m1=1.0 m2=1.0
     ]
-    result = summarize(runs, k1=0.8, k2=0.7)
+    result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["summary"]["m1"]["mean"] == pytest.approx(0.8)
     assert result["summary"]["m2"]["mean"] == pytest.approx(0.75)
     assert result["summary"]["m1"]["stddev"] == pytest.approx(0.2828, abs=1e-4)
@@ -192,14 +192,14 @@ def test_mean_and_stddev_across_runs():
 
 def test_stddev_zero_for_single_run():
     runs = [compute_run_metrics(item(), 1, 5, 5, {"gf1"})]
-    result = summarize(runs, k1=0.5, k2=0.1)
+    result = summarize(runs, min_supported_to_total_output_facts_ratio=0.5, min_covered_to_total_reference_facts_ratio=0.1)
     assert result["summary"]["m1"]["stddev"] == 0.0
     assert result["summary"]["m2"]["stddev"] == 0.0
 
 
 def test_summarize_empty_runs_is_pipeline_error():
     with pytest.raises(PipelineError, match="no runs"):
-        summarize([], k1=0.8, k2=0.7)
+        summarize([], min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
 
 
 # ------------------------------------------------- extraction sanity check
@@ -207,7 +207,7 @@ def test_summarize_empty_runs_is_pipeline_error():
 
 def test_sanity_flags_zero_facts():
     problems = extraction_sanity_check({("gs-001", 1): 0, ("gs-001", 2): 9})
-    assert problems == ["gs-001/1: 0 extracted facts"]
+    assert problems == ["gs-001/1: 0 output facts"]
 
 
 def test_sanity_flags_below_third_of_median():
@@ -299,20 +299,20 @@ def test_m1_counts_supported():
 
 
 def test_m2_covered_requires_known_covered_by():
-    payload = {"verdicts": [{"golden_fact_id": "gf1", "verdict": "covered", "covered_by": "f99"}]}
+    payload = {"verdicts": [{"reference_fact_id": "gf1", "verdict": "covered", "covered_by": "f99"}]}
     with pytest.raises(PipelineError, match="covered_by"):
         validate_verdicts_m2(payload, ["gf1"], ["f1"], "ctx")
 
 
 def test_m2_covered_without_covered_by():
-    payload = {"verdicts": [{"golden_fact_id": "gf1", "verdict": "covered"}]}
+    payload = {"verdicts": [{"reference_fact_id": "gf1", "verdict": "covered"}]}
     with pytest.raises(PipelineError, match="covered_by"):
         validate_verdicts_m2(payload, ["gf1"], ["f1"], "ctx")
 
 
 def test_m2_missing_must_not_set_covered_by():
     payload = {"verdicts": [
-        {"golden_fact_id": "gf1", "verdict": "missing", "covered_by": "f1"}
+        {"reference_fact_id": "gf1", "verdict": "missing", "covered_by": "f1"}
     ]}
     with pytest.raises(PipelineError, match="must not set"):
         validate_verdicts_m2(payload, ["gf1"], ["f1"], "ctx")
@@ -333,15 +333,15 @@ def test_load_golden_set_ok(tmp_path):
     golden = load_golden_set(gdir)
     assert golden.target_skill == "demo-skill"
     assert golden.owner == "test"
-    assert golden.defaults_k1 == 0.8
-    assert golden.items[0].golden_fact_ids == ("gf1", "gf2", "gf3", "gf4")
+    assert golden.defaults_min_supported_to_total_output_facts_ratio == 0.8
+    assert golden.items[0].reference_fact_ids == ("gf1", "gf2", "gf3", "gf4")
     assert golden.hash.startswith("sha256:")
 
 
 def test_golden_manifest_schema_version_required(tmp_path):
     gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2)])
     manifest = json.loads((gdir / "manifest.json").read_text())
-    manifest["schema_version"] = 2
+    manifest["schema_version"] = aggregate.SCHEMA_VERSION + 1
     write_json(gdir / "manifest.json", manifest)
     with pytest.raises(PipelineError, match="schema_version"):
         load_golden_set(gdir)
@@ -366,13 +366,13 @@ def test_golden_weights_must_sum_to_one(tmp_path):
 def test_golden_weights_keys_must_match_fact_ids(tmp_path):
     weights = {"gf1": 0.5, "gf9": 0.5}
     gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2, weights=weights)])
-    with pytest.raises(PipelineError, match="exactly the golden fact ids"):
+    with pytest.raises(PipelineError, match="exactly the reference fact ids"):
         load_golden_set(gdir)
 
 
-def test_golden_empty_golden_facts_rejected(tmp_path):
+def test_golden_empty_reference_facts_rejected(tmp_path):
     payload = golden_item_payload("gs-001", 1)
-    payload["reference"]["golden_facts"] = []
+    payload["reference"]["reference_facts"] = []
     gdir = make_golden(tmp_path, [payload])
     with pytest.raises(PipelineError, match="non-empty array"):
         load_golden_set(gdir)
@@ -394,7 +394,7 @@ def test_golden_id_must_match_filename(tmp_path):
 
 
 def test_golden_threshold_out_of_range(tmp_path):
-    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2)], k1=1.5)
+    gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 2)], min_supported_to_total_output_facts_ratio=1.5)
     with pytest.raises(PipelineError, match=r"\[0, 1\]"):
         load_golden_set(gdir)
 
@@ -437,7 +437,8 @@ def test_main_pass_writes_results(tmp_path, capsys):
     assert results["golden_set"]["hash"].startswith("sha256:")
     assert results["golden_set"]["owner"] == "test"
     assert results["thresholds"] == {
-        "k1": 0.8, "k2": 0.7, "source": {"k1": "manifest", "k2": "manifest"}
+        "min_supported_to_total_output_facts_ratio": 0.8, "min_covered_to_total_reference_facts_ratio": 0.7,
+        "source": {"min_supported_to_total_output_facts_ratio": "manifest", "min_covered_to_total_reference_facts_ratio": "manifest"}
     }
     assert len(results["runs"]) == 2
     assert results["runs"][0]["m1"]["value"] == 0.8
@@ -450,18 +451,20 @@ def test_main_pass_writes_results(tmp_path, capsys):
 
 def test_main_gate_failure_exit_1(tmp_path):
     gdir, run_dir = make_passing_layout(tmp_path)
-    code = aggregate.main(base_args(gdir, run_dir) + ["--k1", "0.9"])
+    code = aggregate.main(base_args(gdir, run_dir) + ["--min-supported-to-total-output-facts-ratio", "0.9"])
     assert code == EXIT_GATE_FAILED
     assert json.loads((run_dir / "results.json").read_text())["verdict"] == "fail"
 
 
 def test_main_cli_thresholds_override_manifest(tmp_path):
     gdir, run_dir = make_passing_layout(tmp_path)
-    code = aggregate.main(base_args(gdir, run_dir) + ["--k1", "0.5", "--k2", "0.5"])
+    code = aggregate.main(
+        base_args(gdir, run_dir) + ["--min-supported-to-total-output-facts-ratio", "0.5", "--min-covered-to-total-reference-facts-ratio", "0.5"]
+    )
     assert code == EXIT_PASS
     results = json.loads((run_dir / "results.json").read_text())
-    assert results["thresholds"]["source"] == {"k1": "cli", "k2": "cli"}
-    assert results["thresholds"]["k1"] == 0.5
+    assert results["thresholds"]["source"] == {"min_supported_to_total_output_facts_ratio": "cli", "min_covered_to_total_reference_facts_ratio": "cli"}
+    assert results["thresholds"]["min_supported_to_total_output_facts_ratio"] == 0.5
 
 
 def test_main_missing_artifact_exit_2_lists_paths(tmp_path, capsys):
@@ -501,7 +504,7 @@ def test_main_zero_facts_exit_2(tmp_path, capsys):
     write_json(run_dir / "facts" / "gs-001" / "1.json", {"facts": []})
     code = aggregate.main(base_args(gdir, run_dir))
     assert code == EXIT_PIPELINE_ERROR
-    assert "0 extracted facts" in capsys.readouterr().err
+    assert "0 output facts" in capsys.readouterr().err
 
 
 def test_main_invalid_iterations_exit_2(tmp_path):
@@ -512,5 +515,5 @@ def test_main_invalid_iterations_exit_2(tmp_path):
 
 def test_main_bad_cli_threshold_exit_2(tmp_path):
     gdir, run_dir = make_passing_layout(tmp_path)
-    code = aggregate.main(base_args(gdir, run_dir) + ["--k1", "1.5"])
+    code = aggregate.main(base_args(gdir, run_dir) + ["--min-supported-to-total-output-facts-ratio", "1.5"])
     assert code == EXIT_PIPELINE_ERROR

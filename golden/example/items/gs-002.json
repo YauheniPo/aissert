@@ -6,7 +6,7 @@
     "snapshot": "Support ticket (Meridian fitness app, fictional):\n\nSubject: workout history gone after language change\n\nSteps I did: opened Settings, switched app language from English to Spanish, went back to the History tab. All my workout history shows 'No workouts yet' even though I have months of data. If I switch the language back to English the history comes back. Web dashboard shows the data fine the whole time, so nothing is deleted. Happens every time, tried on my phone (Pixel 8) and my tablet (Galaxy Tab), same thing. Premium account if that matters."
   },
   "reference": {
-    "golden_facts": [
+    "reference_facts": [
       {"id": "gf1", "text": "Switching the app language from English to Spanish makes the History tab show 'No workouts yet'"},
       {"id": "gf2", "text": "Switching the language back to English restores the history display"},
       {"id": "gf3", "text": "The web dashboard shows the workout data correctly, so no data is deleted"},

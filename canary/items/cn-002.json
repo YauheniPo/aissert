@@ -9,7 +9,7 @@
     "note": "milestone-4 pilot 2026-07-21"
   },
   "input": {
-    "golden_facts": [
+    "reference_facts": [
       {
         "id": "gf1",
         "text": "The issue affects the Android app"
@@ -39,7 +39,7 @@
         "text": "Google sign-in works, only email+password login is affected"
       }
     ],
-    "extracted_facts": [
+    "output_facts": [
       {
         "id": "f1",
         "type": "expectation",

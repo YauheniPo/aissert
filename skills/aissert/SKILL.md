@@ -10,7 +10,7 @@ score, or judge anything yourself. All numbers and the verdict come from
 `scripts/aggregate.py`. Design rationale: DESIGN.md at the repo root.
 
 > **Calibration status.** The canary set exists and is hand-reviewed (all items
-> `reviewed: true`) — step 0 below is meaningful. K1/K2 defaults in golden-set
+> `reviewed: true`) — step 0 below is meaningful. min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio defaults in golden-set
 > manifests are not yet baseline-derived for every set; treat them as
 > uncalibrated placeholders unless a set's own `CALIBRATION.md` says otherwise.
 > Full rationale and current project status: DESIGN.md.
@@ -19,9 +19,13 @@ score, or judge anything yourself. All numbers and the verdict come from
 
 - `golden_set` — path to a golden set directory (contract:
   `references/golden-set-schema.md`)
-- `target_skill` — the skill to evaluate
+- `target_skill` — optional; the skill to evaluate. If omitted, use the
+  `target_skill` printed by `validate_golden.py` in step 1 (the golden set's
+  manifest.json). If given explicitly, it still gets passed to
+  `validate_golden.py --target-skill` as a mismatch check against the manifest.
 - `iterations` — runs of the target skill per dataset item
-- `k1`, `k2` — optional gate overrides; defaults come from the set's manifest.json
+- `min_supported_to_total_output_facts_ratio`, `min_covered_to_total_reference_facts_ratio` — optional gate overrides; defaults come from
+  the set's manifest.json
 - `--smoke` — 3 items × 2 iterations, for fast checks after skill edits
 
 ## Hard rules (all steps)
@@ -47,10 +51,12 @@ Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
    <run_dir>/canary`. Non-zero exit = judges drifted, the whole run is invalid —
    stop, report, do NOT proceed to evaluation.
 1. **Validate** — run
-   `scripts/validate_golden.py <golden_set> --target-skill <target_skill>`.
-   Fail fast on non-zero exit. This verifies the golden-set schema and catches
-   using a dataset for the wrong skill before any LLM calls. Record the printed
-   set hash.
+   `scripts/validate_golden.py <golden_set>` (add `--target-skill <target_skill>`
+   only if the user passed `target_skill` explicitly). Fail fast on non-zero
+   exit. This verifies the golden-set schema and, when `--target-skill` is
+   given, catches using a dataset for the wrong skill before any LLM calls.
+   Record the printed set hash and `target_skill` — if the invocation omitted
+   `target_skill`, use the printed value for step 2 onward.
 2. **Generate** — per item × iteration: spawn a subagent with ONLY the target
    skill and the item's `input.snapshot`. Clean context is mandatory — you have
    seen the reference data, the generator must not. Save the raw output to
@@ -61,14 +67,14 @@ Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
    raw output. Save to `facts/{item}/{i}.json`. Independent per output — dispatch
    in parallel across all outputs, not one at a time.
 4. **Judge** — per output, both judges in parallel, isolated:
-   - `judge-precision`: m1 contract + extracted facts + golden facts →
+   - `judge-supported-output-facts`: m1 contract + extracted facts + golden facts →
      `verdicts/{item}/{i}-m1.json`
-   - `judge-recall`: m2 contract + golden facts + extracted facts →
+   - `judge-expected-output-facts`: m2 contract + golden facts + extracted facts →
      `verdicts/{item}/{i}-m2.json`
 5. **Aggregate** — run:
    ```
    python3 scripts/aggregate.py --run-dir <run_dir> --golden-set <golden_set> \
-     --iterations <N> [--k1 ..] [--k2 ..] [--model-id <id>]
+     --iterations <N> [--min-supported-to-total-output-facts-ratio ..] [--min-covered-to-total-reference-facts-ratio ..] [--model-id <id>]
    ```
    Exit code is the verdict: 0 = pass, 1 = gate failed, 2 = pipeline error.
    Report the summary and `results.json` path to the user.

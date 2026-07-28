@@ -6,7 +6,7 @@
     "snapshot": "Internal QA note (Meridian fitness app, fictional):\n\nDuring the 4.0-beta regression pass we found that push notifications for completed challenges arrive twice on devices where the user is logged into two profiles (personal + coach mode). Single-profile devices get exactly one notification. Both copies arrive within a second of each other and deep-link to the same challenge screen. Repro rate is 10/10 on beta build 4.0.0-b3. Killing the app or muting one profile doesn't help. Earlier 3.x builds with the same dual-profile setup show a single notification, so this is a 4.0 regression. Priority suggestion: high, because double pushes historically cause uninstalls."
   },
   "reference": {
-    "golden_facts": [
+    "reference_facts": [
       {"id": "gf1", "text": "Challenge-completion push notifications arrive twice on devices logged into two profiles"},
       {"id": "gf2", "text": "Single-profile devices receive exactly one notification"},
       {"id": "gf3", "text": "The duplicate reproduces 10 out of 10 times on build 4.0.0-b3"},

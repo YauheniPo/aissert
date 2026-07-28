@@ -18,7 +18,7 @@ source_paths:
 related_pages:
   - ../index.md
   - lint-rules.md
-last_validated_commit: 992c2b3037a4c6dfcdac5ae529dfcfa6cf4bd9bb
+last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 ---
 
 Coverage = union of every page's `source_paths`. A high-signal path (see
@@ -34,7 +34,7 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `.claude/settings.json`, `.claude/skills/`, `.claude/agents/` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `.claude-plugin/` | [repo/structure.md](../repo/structure.md) |
 | `agents/fact-extractor.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
-| `agents/judge-precision.md`, `agents/judge-recall.md` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
+| `agents/judge-supported-output-facts.md`, `agents/judge-expected-output-facts.md` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
 | `skills/aissert/SKILL.md`, `commands/eval.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
 | `skills/aissert/scripts/aggregate.py`, `validate_golden.py` | [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
 | `skills/aissert/scripts/check_canary.py` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |

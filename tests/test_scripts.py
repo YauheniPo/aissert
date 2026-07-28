@@ -21,7 +21,7 @@ def test_validate_golden_ok(tmp_path, capsys):
     assert validate_golden.main([str(gdir)]) == EXIT_PASS
     out = capsys.readouterr().out
     assert "hash: sha256:" in out
-    assert "items: 1, golden facts: 3" in out
+    assert "items: 1, reference facts: 3" in out
 
 
 def test_validate_golden_target_skill_match(tmp_path):

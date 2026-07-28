@@ -29,7 +29,7 @@ from aggregate import (
 
 JUDGE_KINDS = {
     "precision": ("fact_id", M1_VERDICTS),
-    "recall": ("golden_fact_id", M2_VERDICTS),
+    "recall": ("reference_fact_id", M2_VERDICTS),
 }
 
 
