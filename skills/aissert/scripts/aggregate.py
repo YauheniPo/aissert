@@ -2,8 +2,9 @@
 """Deterministic aggregation for aissert eval runs.
 
 Reads fact-extractor and judge outputs from an eval-run directory, computes
-precision (m1) and recall (m2) per run, aggregates across iterations, applies
-the min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio gates and writes results.json plus report.md.
+supported_to_total_output_facts_ratio and covered_to_total_reference_facts_ratio
+per run, aggregates across iterations, applies the corresponding minimum
+thresholds, and writes results.json plus report.md.
 
 All scoring math, aggregation and verdicts live here — never in an LLM.
 
@@ -22,7 +23,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 
 EXIT_PASS = 0
 EXIT_GATE_FAILED = 1
@@ -31,8 +32,8 @@ EXIT_PIPELINE_ERROR = 2
 WEIGHT_SUM_TOLERANCE = 1e-9
 SANITY_MEDIAN_FACTOR = 3  # a run with count*3 < item median is a pipeline failure
 
-M1_VERDICTS = {"supported", "unsupported"}
-M2_VERDICTS = {"covered", "missing"}
+SUPPORTED_OUTPUT_FACTS_VERDICTS = {"supported", "unsupported"}
+EXPECTED_OUTPUT_FACTS_VERDICTS = {"covered", "missing"}
 
 
 class PipelineError(Exception):
@@ -69,9 +70,11 @@ class RunMetrics:
     covered: int
     missing: int
     total_reference_facts: int
-    m1: float
-    m2: float
+    supported_to_total_output_facts_ratio: float
+    covered_to_total_reference_facts_ratio: float
     verbosity_ratio: float
+    unsupported_evidence: tuple[tuple[str, str], ...] = ()
+    missing_evidence: tuple[tuple[str, str], ...] = ()
 
 
 # ---------------------------------------------------------------- loading
@@ -271,22 +274,33 @@ def _validate_verdict_list(
     return by_id
 
 
-def validate_verdicts_m1(data: dict, fact_ids: list[str], ctx: str) -> int:
+def validate_supported_output_facts_verdicts(
+    data: dict, fact_ids: list[str], ctx: str
+) -> int:
     """Validate judge-supported-output-facts output; return the supported count."""
-    by_id = _validate_verdict_list(data, "fact_id", fact_ids, M1_VERDICTS, ctx)
+    by_id = _validate_verdict_list(
+        data, "fact_id", fact_ids, SUPPORTED_OUTPUT_FACTS_VERDICTS, ctx
+    )
     for vid, v in by_id.items():
         _require_str(v, "evidence", f"{ctx}: verdict for {vid!r}")
     return sum(1 for v in by_id.values() if v["verdict"] == "supported")
 
 
-def validate_verdicts_m2(
+def validate_expected_output_facts_verdicts(
     data: dict, reference_ids: list[str], fact_ids: list[str], ctx: str
 ) -> set[str]:
     """Validate judge-expected-output-facts output; return covered reference fact ids."""
-    by_id = _validate_verdict_list(data, "reference_fact_id", reference_ids, M2_VERDICTS, ctx)
+    by_id = _validate_verdict_list(
+        data,
+        "reference_fact_id",
+        reference_ids,
+        EXPECTED_OUTPUT_FACTS_VERDICTS,
+        ctx,
+    )
     known_facts = set(fact_ids)
     covered: set[str] = set()
     for gid, v in by_id.items():
+        _require_str(v, "evidence", f"{ctx}: verdict for {gid!r}")
         covered_by = v.get("covered_by")
         if v["verdict"] == "covered":
             if not isinstance(covered_by, str) or covered_by not in known_facts:
@@ -332,18 +346,22 @@ def compute_run_metrics(
     total_output_facts: int,
     supported: int,
     covered_ids: set[str],
+    unsupported_evidence: tuple[tuple[str, str], ...] = (),
+    missing_evidence: tuple[tuple[str, str], ...] = (),
 ) -> RunMetrics:
     if total_output_facts <= 0:
         raise PipelineError(
-            f"{item.id}/{iteration}: cannot compute m1 with 0 output facts"
+            f"{item.id}/{iteration}: cannot compute supported_to_total_output_facts_ratio with 0 output facts"
         )
     total_reference_facts = len(item.reference_fact_ids)
     if total_reference_facts <= 0:
         raise PipelineError(f"{item.id}/{iteration}: golden item has no reference facts")
     if item.weights:
-        m2 = sum(item.weights[gid] for gid in covered_ids)
+        covered_to_total_reference_facts_ratio = sum(
+            item.weights[gid] for gid in covered_ids
+        )
     else:
-        m2 = len(covered_ids) / total_reference_facts
+        covered_to_total_reference_facts_ratio = len(covered_ids) / total_reference_facts
     return RunMetrics(
         item_id=item.id,
         iteration=iteration,
@@ -353,13 +371,19 @@ def compute_run_metrics(
         covered=len(covered_ids),
         missing=total_reference_facts - len(covered_ids),
         total_reference_facts=total_reference_facts,
-        m1=supported / total_output_facts,
-        m2=m2,
+        supported_to_total_output_facts_ratio=supported / total_output_facts,
+        covered_to_total_reference_facts_ratio=covered_to_total_reference_facts_ratio,
         verbosity_ratio=total_output_facts / total_reference_facts,
+        unsupported_evidence=unsupported_evidence,
+        missing_evidence=missing_evidence,
     )
 
 
-def summarize(runs: list[RunMetrics], min_supported_to_total_output_facts_ratio: float, min_covered_to_total_reference_facts_ratio: float) -> dict:
+def summarize(
+    runs: list[RunMetrics],
+    min_supported_to_total_output_facts_ratio: float,
+    min_covered_to_total_reference_facts_ratio: float,
+) -> dict:
     if not runs:
         raise PipelineError("no runs to aggregate")
 
@@ -369,39 +393,84 @@ def summarize(runs: list[RunMetrics], min_supported_to_total_output_facts_ratio:
             "stddev": statistics.stdev(values) if len(values) >= 2 else 0.0,
         }
 
-    m1_stats = stats([r.m1 for r in runs])
-    m2_stats = stats([r.m2 for r in runs])
+    supported_to_total_output_facts_ratio_stats = stats(
+        [r.supported_to_total_output_facts_ratio for r in runs]
+    )
+    covered_to_total_reference_facts_ratio_stats = stats(
+        [r.covered_to_total_reference_facts_ratio for r in runs]
+    )
+    by_item: dict[str, list[RunMetrics]] = {}
+    for run in runs:
+        by_item.setdefault(run.item_id, []).append(run)
+    per_item = []
+    for item_id in sorted(by_item):
+        item_runs = by_item[item_id]
+        per_item.append(
+            {
+                "item_id": item_id,
+                "supported_to_total_output_facts_ratio": stats(
+                    [r.supported_to_total_output_facts_ratio for r in item_runs]
+                ),
+                "covered_to_total_reference_facts_ratio": stats(
+                    [r.covered_to_total_reference_facts_ratio for r in item_runs]
+                ),
+            }
+        )
+    within_item_stability = {
+        metric: {
+            "stddev_mean": statistics.fmean(
+                item[metric]["stddev"] for item in per_item
+            ),
+            "stddev_max": max(item[metric]["stddev"] for item in per_item),
+        }
+        for metric in (
+            "supported_to_total_output_facts_ratio",
+            "covered_to_total_reference_facts_ratio",
+        )
+    }
     gates = {
-        "m1": {
-            "mean": m1_stats["mean"],
+        "supported_to_total_output_facts_ratio": {
+            "mean": supported_to_total_output_facts_ratio_stats["mean"],
             "threshold": min_supported_to_total_output_facts_ratio,
-            "pass": m1_stats["mean"] >= min_supported_to_total_output_facts_ratio,
+            "pass": supported_to_total_output_facts_ratio_stats["mean"]
+            >= min_supported_to_total_output_facts_ratio,
         },
-        "m2": {
-            "mean": m2_stats["mean"],
+        "covered_to_total_reference_facts_ratio": {
+            "mean": covered_to_total_reference_facts_ratio_stats["mean"],
             "threshold": min_covered_to_total_reference_facts_ratio,
-            "pass": m2_stats["mean"] >= min_covered_to_total_reference_facts_ratio,
+            "pass": covered_to_total_reference_facts_ratio_stats["mean"]
+            >= min_covered_to_total_reference_facts_ratio,
         },
     }
     return {
         "summary": {
-            "m1": m1_stats,
-            "m2": m2_stats,
+            "supported_to_total_output_facts_ratio": supported_to_total_output_facts_ratio_stats,
+            "covered_to_total_reference_facts_ratio": covered_to_total_reference_facts_ratio_stats,
+            "within_item_stability": within_item_stability,
+            "per_item": per_item,
             "verbosity_ratio_mean": statistics.fmean(r.verbosity_ratio for r in runs),
         },
         "gates": gates,
-        "verdict": "pass" if gates["m1"]["pass"] and gates["m2"]["pass"] else "fail",
+        "verdict": (
+            "pass"
+            if gates["supported_to_total_output_facts_ratio"]["pass"]
+            and gates["covered_to_total_reference_facts_ratio"]["pass"]
+            else "fail"
+        ),
     }
 
 
 # ---------------------------------------------------------------- pipeline
 
 
-def _artifact_paths(run_dir: Path, item_id: str, iteration: int) -> tuple[Path, Path, Path]:
+def _artifact_paths(
+    run_dir: Path, item_id: str, iteration: int
+) -> tuple[Path, Path, Path, Path]:
     return (
+        run_dir / "runs" / item_id / f"{iteration}.md",
         run_dir / "facts" / item_id / f"{iteration}.json",
-        run_dir / "verdicts" / item_id / f"{iteration}-m1.json",
-        run_dir / "verdicts" / item_id / f"{iteration}-m2.json",
+        run_dir / "verdicts" / item_id / f"{iteration}-supported-output-facts.json",
+        run_dir / "verdicts" / item_id / f"{iteration}-expected-output-facts.json",
     )
 
 
@@ -425,7 +494,7 @@ def collect_runs(run_dir: Path, golden: GoldenSet, iterations: int) -> list[RunM
     # extraction is a pipeline failure, not a skill failure.
     fact_ids_by_run: dict[tuple[str, int], list[str]] = {}
     for item, i in expected:
-        facts_path, _, _ = _artifact_paths(run_dir, item.id, i)
+        _, facts_path, _, _ = _artifact_paths(run_dir, item.id, i)
         ctx = f"facts {item.id}/{i}"
         fact_ids_by_run[(item.id, i)] = validate_facts(_load_json(facts_path, ctx), ctx)
 
@@ -439,15 +508,41 @@ def collect_runs(run_dir: Path, golden: GoldenSet, iterations: int) -> list[RunM
     # Pass 2: verdicts + metrics.
     runs: list[RunMetrics] = []
     for item, i in expected:
-        _, m1_path, m2_path = _artifact_paths(run_dir, item.id, i)
+        _, _, supported_output_facts_path, expected_output_facts_path = _artifact_paths(run_dir, item.id, i)
         fact_ids = fact_ids_by_run[(item.id, i)]
-        m1_ctx = f"verdicts {item.id}/{i}-m1"
-        m2_ctx = f"verdicts {item.id}/{i}-m2"
-        supported = validate_verdicts_m1(_load_json(m1_path, m1_ctx), fact_ids, m1_ctx)
-        covered = validate_verdicts_m2(
-            _load_json(m2_path, m2_ctx), list(item.reference_fact_ids), fact_ids, m2_ctx
+        supported_output_facts_ctx = (
+            f"verdicts {item.id}/{i}-supported-output-facts"
         )
-        runs.append(compute_run_metrics(item, i, len(fact_ids), supported, covered))
+        expected_output_facts_ctx = (
+            f"verdicts {item.id}/{i}-expected-output-facts"
+        )
+        supported_output_facts_data = _load_json(supported_output_facts_path, supported_output_facts_ctx)
+        expected_output_facts_data = _load_json(expected_output_facts_path, expected_output_facts_ctx)
+        supported = validate_supported_output_facts_verdicts(supported_output_facts_data, fact_ids, supported_output_facts_ctx)
+        covered = validate_expected_output_facts_verdicts(
+            expected_output_facts_data, list(item.reference_fact_ids), fact_ids, expected_output_facts_ctx
+        )
+        unsupported_evidence = tuple(
+            (verdict["fact_id"], verdict["evidence"])
+            for verdict in supported_output_facts_data["verdicts"]
+            if verdict["verdict"] == "unsupported"
+        )
+        missing_evidence = tuple(
+            (verdict["reference_fact_id"], verdict["evidence"])
+            for verdict in expected_output_facts_data["verdicts"]
+            if verdict["verdict"] == "missing"
+        )
+        runs.append(
+            compute_run_metrics(
+                item,
+                i,
+                len(fact_ids),
+                supported,
+                covered,
+                unsupported_evidence,
+                missing_evidence,
+            )
+        )
     runs.sort(key=lambda r: (r.item_id, r.iteration))
     return runs
 
@@ -502,19 +597,29 @@ def build_results(
             {
                 "item_id": r.item_id,
                 "iteration": r.iteration,
-                "m1": {
+                "supported_to_total_output_facts_ratio": {
                     "supported": r.supported,
                     "unsupported": r.unsupported,
                     "total_output_facts": r.total_output_facts,
-                    "value": r.m1,
+                    "value": r.supported_to_total_output_facts_ratio,
                 },
-                "m2": {
+                "covered_to_total_reference_facts_ratio": {
                     "covered": r.covered,
                     "missing": r.missing,
                     "total_reference_facts": r.total_reference_facts,
-                    "value": r.m2,
+                    "value": r.covered_to_total_reference_facts_ratio,
                 },
                 "verbosity_ratio": r.verbosity_ratio,
+                "diagnostics": {
+                    "unsupported": [
+                        {"fact_id": fact_id, "evidence": evidence}
+                        for fact_id, evidence in r.unsupported_evidence
+                    ],
+                    "missing": [
+                        {"reference_fact_id": fact_id, "evidence": evidence}
+                        for fact_id, evidence in r.missing_evidence
+                    ],
+                },
             }
             for r in runs
         ],
@@ -536,10 +641,13 @@ def build_report(results: dict) -> str:
         "",
         "## Gates",
         "",
-        "| Metric | Mean | Stddev | Threshold | Result |",
+        "| Metric | Mean | All-run dispersion | Threshold | Result |",
         "|---|---:|---:|---:|---|",
     ]
-    for metric in ("m1", "m2"):
+    for metric in (
+        "supported_to_total_output_facts_ratio",
+        "covered_to_total_reference_facts_ratio",
+    ):
         gate = results["gates"][metric]
         stats = results["summary"][metric]
         status = "pass" if gate["pass"] else "fail"
@@ -552,17 +660,81 @@ def build_report(results: dict) -> str:
             "",
             f"Verbosity ratio mean: {results['summary']['verbosity_ratio_mean']:.4f}",
             "",
+            "## Within-item stability",
+            "",
+            "| Metric | Mean iteration stddev | Max iteration stddev |",
+            "|---|---:|---:|",
+        ]
+    )
+    for metric in (
+        "supported_to_total_output_facts_ratio",
+        "covered_to_total_reference_facts_ratio",
+    ):
+        stability = results["summary"]["within_item_stability"][metric]
+        lines.append(
+            f"| {metric} | {stability['stddev_mean']:.4f} | "
+            f"{stability['stddev_max']:.4f} |"
+        )
+    diagnostic_rows = []
+    for run in results["runs"]:
+        for verdict in run["diagnostics"]["unsupported"]:
+            diagnostic_rows.append(
+                (
+                    run["item_id"],
+                    run["iteration"],
+                    "unsupported",
+                    verdict["fact_id"],
+                    verdict["evidence"],
+                )
+            )
+        for verdict in run["diagnostics"]["missing"]:
+            diagnostic_rows.append(
+                (
+                    run["item_id"],
+                    run["iteration"],
+                    "missing",
+                    verdict["reference_fact_id"],
+                    verdict["evidence"],
+                )
+            )
+    lines.extend(["", "## Verdict evidence", ""])
+    if diagnostic_rows:
+        lines.extend(
+            [
+                "| Item | Iteration | Verdict | Fact | Evidence |",
+                "|---|---:|---|---|---|",
+            ]
+        )
+        for item_id, iteration, verdict, fact_id, evidence in diagnostic_rows[:20]:
+            safe_evidence = evidence.replace("|", "\\|").replace("\n", " ")
+            lines.append(
+                f"| {item_id} | {iteration} | {verdict} | {fact_id} | "
+                f"{safe_evidence} |"
+            )
+        if len(diagnostic_rows) > 20:
+            lines.extend(
+                [
+                    "",
+                    f"Showing 20 of {len(diagnostic_rows)} unsupported/missing verdicts; "
+                    "inspect the verdict JSON artifacts for the complete set.",
+                ]
+            )
+    else:
+        lines.append("No unsupported or missing verdicts.")
+    lines.extend(
+        [
+            "",
             "## Runs",
             "",
-            "| Item | Iteration | m1 | m2 | Output Facts | Reference Facts | Verbosity |",
+            "| Item | Iteration | Supported / Total Output Facts | Covered / Total Reference Facts | Output Facts | Reference Facts | Verbosity |",
             "|---|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for run in results["runs"]:
         lines.append(
             f"| {run['item_id']} | {run['iteration']} | "
-            f"{run['m1']['value']:.4f} | {run['m2']['value']:.4f} | "
-            f"{run['m1']['total_output_facts']} | {run['m2']['total_reference_facts']} | "
+            f"{run['supported_to_total_output_facts_ratio']['value']:.4f} | {run['covered_to_total_reference_facts_ratio']['value']:.4f} | "
+            f"{run['supported_to_total_output_facts_ratio']['total_output_facts']} | {run['covered_to_total_reference_facts_ratio']['total_reference_facts']} | "
             f"{run['verbosity_ratio']:.4f} |"
         )
     lines.append("")
@@ -576,8 +748,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", required=True, type=Path, help="eval-run directory")
     parser.add_argument("--golden-set", required=True, type=Path, help="golden set directory")
     parser.add_argument("--iterations", required=True, type=int, help="iterations per item (1-based files)")
-    parser.add_argument("--min-supported-to-total-output-facts-ratio", type=float, default=None, help="min mean precision; overrides manifest")
-    parser.add_argument("--min-covered-to-total-reference-facts-ratio", type=float, default=None, help="min mean recall; overrides manifest")
+    parser.add_argument(
+        "--min-supported-to-total-output-facts-ratio",
+        type=float,
+        default=None,
+        help="minimum mean supported/total output facts ratio; overrides manifest",
+    )
+    parser.add_argument(
+        "--min-covered-to-total-reference-facts-ratio",
+        type=float,
+        default=None,
+        help="minimum mean covered/total reference facts ratio; overrides manifest",
+    )
     parser.add_argument("--model-id", default=None, help="target-skill model id, recorded in results.json")
     args = parser.parse_args(argv)
 
@@ -601,7 +783,10 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_PIPELINE_ERROR
 
     print(f"verdict: {results['verdict'].upper()}")
-    for metric in ("m1", "m2"):
+    for metric in (
+        "supported_to_total_output_facts_ratio",
+        "covered_to_total_reference_facts_ratio",
+    ):
         gate = results["gates"][metric]
         stats = results["summary"][metric]
         print(

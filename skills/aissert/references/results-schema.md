@@ -4,7 +4,7 @@ Contract for every JSON artifact produced during an eval run and consumed by
 `aggregate.py`. Single source of truth; agent prompts must reference this file,
 never restate a diverging copy.
 
-Schema version: **4** (same shared `SCHEMA_VERSION` constant as
+Schema version: **6** (same shared `SCHEMA_VERSION` constant as
 `golden-set-schema.md` and `canary-schema.md`)
 
 ## Run directory layout
@@ -13,8 +13,8 @@ Schema version: **4** (same shared `SCHEMA_VERSION` constant as
 eval-runs/{timestamp}-{target}/
 ├── runs/{item}/{i}.md              # raw target-skill output (not JSON)
 ├── facts/{item}/{i}.json           # fact-extractor output
-├── verdicts/{item}/{i}-m1.json     # judge-supported-output-facts output
-├── verdicts/{item}/{i}-m2.json     # judge-expected-output-facts output
+├── verdicts/{item}/{i}-supported-output-facts.json # judge-supported-output-facts output
+├── verdicts/{item}/{i}-expected-output-facts.json  # judge-expected-output-facts output
 ├── results.json                    # written by aggregate.py
 └── report.md                       # compact human-readable summary
 ```
@@ -47,7 +47,7 @@ persists their JSON out.
   check (below).
 - Unknown extra keys are ignored.
 
-## verdicts/{item}/{i}-m1.json — judge-supported-output-facts output
+## verdicts/{item}/{i}-supported-output-facts.json — judge-supported-output-facts output
 
 One verdict per **extracted** fact. The verdict set must cover the extracted
 fact ids exactly: no missing ids, no unknown ids, no duplicates.
@@ -65,7 +65,7 @@ fact ids exactly: no missing ids, no unknown ids, no duplicates.
   never output numeric scores.
 - `evidence` — non-empty string: which reference fact supports it, or why nothing does.
 
-## verdicts/{item}/{i}-m2.json — judge-expected-output-facts output
+## verdicts/{item}/{i}-expected-output-facts.json — judge-expected-output-facts output
 
 One verdict per **reference** fact. Must cover the item's reference fact ids exactly.
 
@@ -81,7 +81,10 @@ One verdict per **reference** fact. Must cover the item's reference fact ids exa
 - `verdict` — exactly `"covered"` or `"missing"`.
 - `covered_by` — required when `covered`; must be an id present in the run's
   facts file. Must be absent or `null` when `missing`.
-- `evidence` — optional string.
+- `evidence` — required non-empty string. For `covered`, name the output fact
+  that carries the core assertion and any additional output fact ids needed to
+  cover the full reference claim. For `missing`, state which part is absent or
+  contradicted.
 
 Any malformed judge response (wrong id set, bad verdict value, missing required
 field) is a **pipeline error, never a silent skip**.
@@ -90,7 +93,7 @@ field) is a **pipeline error, never a silent skip**.
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 6,
   "target_skill": "test-cases-writer",
   "golden_set": {
     "path": "golden/example",
@@ -109,37 +112,70 @@ field) is a **pipeline error, never a silent skip**.
     {
       "item_id": "gs-001",
       "iteration": 1,
-      "m1": {"supported": 8, "unsupported": 2, "total_output_facts": 10, "value": 0.8},
-      "m2": {"covered": 7, "missing": 3, "total_reference_facts": 10, "value": 0.7},
-      "verbosity_ratio": 1.0
+      "supported_to_total_output_facts_ratio": {"supported": 8, "unsupported": 2, "total_output_facts": 10, "value": 0.8},
+      "covered_to_total_reference_facts_ratio": {"covered": 7, "missing": 3, "total_reference_facts": 10, "value": 0.7},
+      "verbosity_ratio": 1.0,
+      "diagnostics": {
+        "unsupported": [
+          {"fact_id": "f9", "evidence": "No reference fact states the device model"}
+        ],
+        "missing": [
+          {"reference_fact_id": "gf8", "evidence": "No output fact states the expiry"}
+        ]
+      }
     }
   ],
   "summary": {
-    "m1": {"mean": 0.8, "stddev": 0.0},
-    "m2": {"mean": 0.7, "stddev": 0.0},
+    "supported_to_total_output_facts_ratio": {"mean": 0.8, "stddev": 0.0},
+    "covered_to_total_reference_facts_ratio": {"mean": 0.7, "stddev": 0.0},
+    "within_item_stability": {
+      "supported_to_total_output_facts_ratio": {"stddev_mean": 0.0, "stddev_max": 0.0},
+      "covered_to_total_reference_facts_ratio": {"stddev_mean": 0.0, "stddev_max": 0.0}
+    },
+    "per_item": [
+      {
+        "item_id": "gs-001",
+        "supported_to_total_output_facts_ratio": {"mean": 0.8, "stddev": 0.0},
+        "covered_to_total_reference_facts_ratio": {"mean": 0.7, "stddev": 0.0}
+      }
+    ],
     "verbosity_ratio_mean": 1.0
   },
   "gates": {
-    "m1": {"mean": 0.8, "threshold": 0.8, "pass": true},
-    "m2": {"mean": 0.7, "threshold": 0.7, "pass": true}
+    "supported_to_total_output_facts_ratio": {"mean": 0.8, "threshold": 0.8, "pass": true},
+    "covered_to_total_reference_facts_ratio": {"mean": 0.7, "threshold": 0.7, "pass": true}
   },
   "verdict": "pass"
 }
 ```
 
+Top-level `summary.supported_to_total_output_facts_ratio.stddev` and
+`summary.covered_to_total_reference_facts_ratio.stddev` describe dispersion
+across all item-iteration rows, so they include both item difficulty and
+iteration noise. `within_item_stability` isolates run-to-run noise by first
+computing stddev across iterations of each item, then reporting its mean and maximum.
+`per_item` retains those item-level means and stddevs for diagnosis.
+Each run also carries the evidence for its `unsupported` and `missing`
+verdicts. `report.md` renders the first 20 such rows; the verdict JSON files
+remain the complete canonical evidence.
+
 Definitions (all computed in Python, never by an LLM):
 
-- Per run: `m1.value = supported / total_output_facts`;
-  `m2.value = covered / total_reference_facts`, or the weighted sum of covered
-  reference facts when the item defines non-empty `weights`
-  (see golden-set-schema.md). `m2.covered` / `m2.missing` stay raw counts.
+- Per run: `supported_to_total_output_facts_ratio.value = supported / total_output_facts`;
+  `covered_to_total_reference_facts_ratio.value = covered / total_reference_facts`,
+  or the weighted sum of covered reference facts when the item defines non-empty
+  `weights` (see golden-set-schema.md).
+  `covered_to_total_reference_facts_ratio.covered` and
+  `covered_to_total_reference_facts_ratio.missing` stay raw counts.
 - `verbosity_ratio = total_output_facts / total_reference_facts` — anti-Goodhart diagnostic
   (recall does not punish verbosity; precision punishes length mechanically).
   Report-only, no gate.
 - `summary.*.stddev` — sample stddev across all runs; `0.0` when fewer than
-  2 runs. Stability is report-only for now (may become a third gate later
-  via manifest).
-- Gate: `verdict = "pass"` iff `mean(m1) >= min_supported_to_total_output_facts_ratio AND mean(m2) >= min_covered_to_total_reference_facts_ratio`
+  2 runs. This is dispersion, not pure iteration stability.
+- `summary.within_item_stability` — mean/max of per-item iteration stddev;
+  report-only for now (may become a third gate later via manifest).
+- Gate: `verdict = "pass"` iff
+  `mean(supported_to_total_output_facts_ratio) >= min_supported_to_total_output_facts_ratio AND mean(covered_to_total_reference_facts_ratio) >= min_covered_to_total_reference_facts_ratio`
   (inclusive).
 - `model_id` — target-skill model as reported by the orchestrator; `null` if
   not provided (model drift tracking, DESIGN.md §7.3).
@@ -148,8 +184,9 @@ Definitions (all computed in Python, never by an LLM):
 ## report.md — aggregate.py output
 
 A compact Markdown rendering of the same deterministic data in `results.json`:
-verdict, golden-set identity, gate summary, verbosity diagnostic, and per-run
-m1/m2 rows. `results.json` remains canonical for machines and trend storage.
+verdict, golden-set identity, gate summary, within-item stability, up to 20
+unsupported/missing evidence rows, verbosity, and both named ratio values per run.
+`results.json` remains canonical for machines and trend storage.
 
 ## Extraction sanity check
 

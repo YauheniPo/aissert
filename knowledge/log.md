@@ -3,6 +3,80 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-07-28 (3)
+
+- Replaced the opaque eval metric names `m1`/`m2` with the already-established
+  `supported_to_total_output_facts_ratio`/
+  `covered_to_total_reference_facts_ratio` names across Python APIs, results
+  JSON, reports, tests, contracts, design docs, and wiki pages. Verdict
+  artifacts now use the matching `supported-output-facts`/
+  `expected-output-facts` judge names. This is a breaking artifact-contract
+  change, so bumped the shared schema version 5->6 and `golden/example`
+  1.0.5->1.0.6. Historical `eval-runs/` artifacts remain immutable and retain
+  their original schema-5 names.
+
+## 2026-07-28 (2)
+
+- Session-start maintenance pass over the read-plan's flagged pages
+  (`domains/eval-pipeline.md`, `domains/golden-and-canary.md`,
+  `hotspots/aggregate-py.md`, `hotspots/judges-and-canary.md`, `index.md`,
+  `meta/lint-rules.md`, `meta/source-inventory.md`,
+  `repo/build-test-and-ci.md`, `repo/structure.md`, `status.md`). Cross-checked
+  their `source_paths` (aggregate.py, check_canary.py, canary-schema.md,
+  canary/items/cn-012.json + cn-013.json, both manifests) against current
+  content; all held up except one drift: `status.md` still said live
+  agreement for the 2026-07-28 grouped canary gates was "pending," but
+  `hotspots/judges-and-canary.md`'s own "Recall canary FAIL" entry (below)
+  already recorded a completed, passing rerun (recall 42/42, precision
+  `0.9559`, extractor/non-borderline exact). Corrected `status.md` to state
+  the confirmed result instead of a stale pending claim. No other page
+  content changed; `lint.py` was already clean going in (the many concurrent
+  raw-file edits are self-exempted from `stale_pages` while they're also
+  the changed wiki pages, per `lib.py`'s `find_stale_pages`).
+
+## 2026-07-28
+
+- Added `scripts/claude/reinstall_plugin.sh` (one-command local plugin
+  refresh + new session) and documented it in README's local dev loop,
+  CLAUDE.md, CHANGELOG, and `repo/build-test-and-ci.md`.
+- Live step-0 canary failed the recall gate on `cn-012`/`gf6` (stable 3/3
+  `missing` on frozen input — drift, not oscillation). Added a definitional
+  label composition rubric bullet and a covered/missing anchored example pair
+  to `agents/judge-expected-output-facts.md`; full canary rerun passed
+  (recall exact again, precision 0.9559 within its 0.85 floor). Recorded the
+  incident and fix in `hotspots/judges-and-canary.md`.
+- Bundled `skills/example-bug-summarizer/` as the actual synthetic target named
+  by `golden/example/manifest.json`, added the example's local-run README, and
+  added a schema test that every committed golden target resolves to a packaged
+  skill. Updated `repo/structure.md`, `repo/build-test-and-ci.md`, and the source
+  inventory so the self-contained local workflow is discoverable.
+- Strengthened runtime-agent calibration without changing the three-agent
+  architecture. `check_canary.py` now validates frozen inputs and actual judge
+  outputs with the same strict contracts as `aggregate.py`, and applies
+  separate overall, precision, recall, non-borderline, and extractor gates.
+  Added exact non-borderline judge cases `cn-014`/`cn-015` and three tolerant
+  extractor regression cases. Recall evidence is now mandatory; clarified
+  multi-fact `covered_by` semantics and replaced an ambiguous precision
+  weaker-claim example. Updated `status.md`, `domains/eval-pipeline.md`,
+  `domains/golden-and-canary.md`, and `hotspots/judges-and-canary.md`. Live
+  agent agreement for the changed prompts is intentionally marked pending
+  until the next eval's mandatory step 0. Also refreshed
+  `domains/change-playbooks.md`, `hotspots/aggregate-py.md`,
+  `repo/build-test-and-ci.md`, `repo/structure.md`, and revalidated the three
+  wiki meta pages against the current wiki configuration/coverage map.
+  Requiring recall evidence is a breaking artifact-contract change, so bumped
+  shared schema version 4->5 and synthetic `golden/example` set version
+  1.0.4->1.0.5 instead of silently accepting incompatible old artifacts.
+  `aggregate.py` now also requires every raw `runs/{item}/{i}.md` artifact,
+  preserving the documented trace from each metric back to source output.
+  Added per-item means/stddev and within-item stability mean/max so differences
+  in item difficulty are no longer misreported as iteration noise. Reports now
+  include the first 20 unsupported/missing evidence rows and results retain
+  all such evidence per run.
+  Renamed extractor anchor fields from implementation-heavy
+  `required_substrings`/`forbidden_substrings` to the clearer symmetric
+  `must_contain`/`must_not_contain` names before schema v5 was finalized.
+
 ## 2026-07-27 (2)
 
 - Closed the naming gap left by the previous rename wave: `RunMetrics`'s

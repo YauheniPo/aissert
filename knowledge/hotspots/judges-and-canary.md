@@ -1,7 +1,7 @@
 ---
 title: Judges & canary review
 kind: hotspot
-summary: How judge prompts get calibrated (rubric + anchored examples), the hand-review workflow, and a live canary FAIL on 2026-07-21 that led to a rubric fix plus a min_agreement relaxation (1.0 -> 0.90).
+summary: How runtime-agent prompts get calibrated, how strict grouped canary gates work, and the live precision drift evidence behind its borderline-only relaxation.
 source_paths:
   - agents/judge-supported-output-facts.md
   - agents/judge-expected-output-facts.md
@@ -14,13 +14,16 @@ related_pages:
   - ../domains/golden-and-canary.md
   - ../domains/change-playbooks.md
   - ../status.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
-## Hand review: done 2026-07-21
+## Hand review: done 2026-07-21, extended 2026-07-28
 
-All 13 items in `canary/items/` are now `reviewed: true` (12 from the
-milestone-4 pilot + `cn-013`, added during this review). `check_canary.py`
+All 15 judge items in `canary/items/` and all 3 extractor items in
+`canary/extractor-items/` are `reviewed: true`. The original 12 came from the
+milestone-4 pilot; `cn-013` added recall `missing`, while `cn-014`/`cn-015`
+add exact non-borderline qualifier, specificity, weaker-claim, and
+contradiction cases. `check_canary.py`
 refuses to run against an unreviewed item (exit 2) — a canary pre-filled
 from pilot output and never reviewed would only test the judge against
 itself, which is why this was a hard blocker until now.
@@ -69,6 +72,15 @@ verdict, don't assume "reviewed: true" alone means the judges currently pass.
    on build 4.0.0-b3" vs. an extracted fact that only says "highly
    reproducible") — both expected `missing`, exercising both sub-cases in
    `judge-expected-output-facts.md`'s rubric.
+
+4. **Grouped-gate and extractor gaps closed 2026-07-28.** The old pooled
+   `min_agreement=0.90` allowed precision stability to hide a small recall
+   regression, and `compare_item` did not enforce the full runtime artifact
+   contract. The checker now validates frozen input ids, reuses
+   `aggregate.py`'s verdict validators (including evidence and `covered_by`),
+   and gates precision, recall, non-borderline, and extractor groups
+   separately. Three extractor cases cover compound splitting/qualifiers,
+   deduplication/no-inference, and the valid empty-facts response.
 
 ## The rubric IS the calibration mechanism
 
@@ -159,9 +171,32 @@ oscillate. Per the exception already written into
 evidence a specific borderline case legitimately oscillates"), this qualifies:
 two live runs on the same frozen inputs, same prompt, disagreed with each
 other by more than either disagreed with the hand label. `canary/manifest.json`
-`min_agreement` dropped from `1.0` to `0.90` (both observed runs: 0.9245 and
-0.9340 — margin below the observed floor, not at it). Rationale and the full
-mismatch table are recorded in `canary/manifest.json`'s `description` field.
+the original pooled `min_agreement` dropped from `1.0` to `0.90` (both
+observed runs: 0.9245 and 0.9340).
+
+On 2026-07-28 that pooled relaxation was scoped correctly: the original
+precision group had 8/64 and 7/64 mismatches (`0.875` and `0.890625`), so its
+floor is `0.85`; recall remains `1.0`, and non-borderline and extractor
+groups are exact. The overall `0.90` floor remains as an additional guard,
+not as a substitute for group gates.
+
+## Recall canary FAIL, rubric lever used, 2026-07-28
+
+Live step-0 canary on `/aissert:eval golden/example --smoke` failed the recall
+gate: `cn-012`/`gf6` ("the defect is a 4.0 regression", expected `covered`)
+came back `missing`, and recall's floor is `1.0`. Two reruns on the same
+frozen input reproduced the same verdict with the same reasoning (3/3
+`missing`) — **stable drift, not borderline oscillation**, so the threshold
+lever did not apply. The judge refused to credit a reference fact whose
+definition was fully expressed across two extracted facts (bug present in
+4.0-beta + 3.x behaves correctly) because no single fact used the word
+"regression". Fix per lever 1: a "definitional label composition" rubric
+bullet plus a covered/missing anchored example pair in
+`agents/judge-expected-output-facts.md`. Full canary rerun after the patch:
+recall 42/42 again (`cn-012`/`gf6` covered, `cn-013`/`gf6` still correctly
+missing), extractor and non-borderline exact, precision 0.9559 with 3
+mismatches all in the known borderline-oscillation class (`cn-002`/f2,
+`cn-003`/f9, `cn-006`/f5) — within its 0.85 floor.
 
 **Takeaway for next time this fires:** don't assume every canary FAIL is a
 pure rubric bug fixable by one prompt edit — rerun once on the same frozen

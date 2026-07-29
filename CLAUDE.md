@@ -70,7 +70,11 @@ change contradicts DESIGN.md, update DESIGN.md in the same commit or stop and as
 ## Local dev loop
 
 Add this repo directory as a local plugin marketplace, install `aissert` from it,
-re-install after changes. Test the slash command end-to-end against golden/example
+re-install after changes. `scripts/claude/reinstall_plugin.sh` does the whole
+refresh in one command (schema check → forced uninstall+install → new session);
+run it from a plain terminal — the in-session sandbox blocks `~/.claude/plugins`
+writes, and `/plugin update` alone never re-copies an unchanged-version tree.
+Test the slash command end-to-end against golden/example
 before touching real datasets.
 
 **Real datasets never go inside this repo's directory, gitignored or not** — a

@@ -96,10 +96,23 @@ def test_no_unexpected_agent_files():
 # ---------------------------------------------------------- skill, command
 
 
-def test_skill_frontmatter():
-    fm = parse_frontmatter(REPO / "skills" / "aissert" / "SKILL.md")
-    assert fm["name"] == "aissert"
+@pytest.mark.parametrize("skill_name", ["aissert", "example-bug-summarizer"])
+def test_skill_frontmatter(skill_name):
+    fm = parse_frontmatter(REPO / "skills" / skill_name / "SKILL.md")
+    assert fm["name"] == skill_name
     assert fm["description"].strip()
+
+
+def test_golden_target_skills_are_packaged():
+    for manifest_path in sorted((REPO / "golden").glob("*/manifest.json")):
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        target_skill = manifest["target_skill"]
+        skill_path = REPO / "skills" / target_skill / "SKILL.md"
+        assert skill_path.is_file(), (
+            f"{manifest_path.relative_to(REPO)} targets missing packaged skill "
+            f"{target_skill!r}"
+        )
+        assert parse_frontmatter(skill_path)["name"] == target_skill
 
 
 def test_command_frontmatter():

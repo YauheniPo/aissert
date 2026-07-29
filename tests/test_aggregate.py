@@ -19,8 +19,8 @@ from aggregate import (
     load_golden_set,
     summarize,
     validate_facts,
-    validate_verdicts_m1,
-    validate_verdicts_m2,
+    validate_supported_output_facts_verdicts,
+    validate_expected_output_facts_verdicts,
 )
 
 # ---------------------------------------------------------------- helpers
@@ -71,7 +71,7 @@ def facts_payload(n_facts):
     }
 
 
-def m1_payload(n_facts, n_supported):
+def supported_output_facts_payload(n_facts, n_supported):
     return {
         "verdicts": [
             {
@@ -84,28 +84,42 @@ def m1_payload(n_facts, n_supported):
     }
 
 
-def m2_payload(n_golden, covered_ids, covered_by="f1"):
+def expected_output_facts_payload(n_golden, covered_ids, covered_by="f1"):
     verdicts = []
     for k in range(1, n_golden + 1):
         gid = f"gf{k}"
         if gid in covered_ids:
             verdicts.append(
-                {"reference_fact_id": gid, "verdict": "covered", "covered_by": covered_by}
+                {
+                    "reference_fact_id": gid,
+                    "verdict": "covered",
+                    "covered_by": covered_by,
+                    "evidence": f"{covered_by} covers {gid}",
+                }
             )
         else:
-            verdicts.append({"reference_fact_id": gid, "verdict": "missing"})
+            verdicts.append(
+                {
+                    "reference_fact_id": gid,
+                    "verdict": "missing",
+                    "evidence": f"no output fact covers {gid}",
+                }
+            )
     return {"verdicts": verdicts}
 
 
 def write_run(run_dir, item_id, iteration, n_facts, n_supported, n_golden, covered_ids):
+    raw_path = run_dir / "runs" / item_id / f"{iteration}.md"
+    raw_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_path.write_text("synthetic raw output", encoding="utf-8")
     write_json(run_dir / "facts" / item_id / f"{iteration}.json", facts_payload(n_facts))
     write_json(
-        run_dir / "verdicts" / item_id / f"{iteration}-m1.json",
-        m1_payload(n_facts, n_supported),
+        run_dir / "verdicts" / item_id / f"{iteration}-supported-output-facts.json",
+        supported_output_facts_payload(n_facts, n_supported),
     )
     write_json(
-        run_dir / "verdicts" / item_id / f"{iteration}-m2.json",
-        m2_payload(n_golden, covered_ids),
+        run_dir / "verdicts" / item_id / f"{iteration}-expected-output-facts.json",
+        expected_output_facts_payload(n_golden, covered_ids),
     )
 
 
@@ -121,21 +135,21 @@ def item(n_golden=4, weights=None, item_id="gs-001"):
 # ---------------------------------------------------- compute_run_metrics
 
 
-def test_m1_m2_computation():
+def test_supported_and_covered_ratios_computation():
     r = compute_run_metrics(item(n_golden=4), 1, total_output_facts=10, supported=8,
                             covered_ids={"gf1", "gf2", "gf3"})
-    assert r.m1 == 0.8
-    assert r.m2 == 0.75
+    assert r.supported_to_total_output_facts_ratio == 0.8
+    assert r.covered_to_total_reference_facts_ratio == 0.75
     assert r.unsupported == 2
     assert r.missing == 1
     assert r.verbosity_ratio == 2.5
 
 
-def test_weighted_recall():
+def test_weighted_covered_to_total_reference_facts_ratio():
     weights = {"gf1": 0.7, "gf2": 0.1, "gf3": 0.1, "gf4": 0.1}
     r = compute_run_metrics(item(weights=weights), 1, total_output_facts=5, supported=5,
                             covered_ids={"gf1"})
-    assert r.m2 == pytest.approx(0.7)
+    assert r.covered_to_total_reference_facts_ratio == pytest.approx(0.7)
     assert r.covered == 1
     assert r.missing == 3
 
@@ -158,43 +172,63 @@ def test_verdict_pass_at_exact_thresholds():
     runs = [compute_run_metrics(item(n_golden=10), 1, 10, 8, {f"gf{k}" for k in range(1, 8)})]
     result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["verdict"] == "pass"
-    assert result["gates"]["m1"]["pass"] and result["gates"]["m2"]["pass"]
+    assert result["gates"]["supported_to_total_output_facts_ratio"]["pass"] and result["gates"]["covered_to_total_reference_facts_ratio"]["pass"]
 
 
-def test_verdict_fail_on_m1_only():
+def test_verdict_fail_on_supported_to_total_output_facts_ratio_only():
     runs = [compute_run_metrics(item(n_golden=10), 1, 10, 7, {f"gf{k}" for k in range(1, 11)})]
     result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["verdict"] == "fail"
-    assert not result["gates"]["m1"]["pass"]
-    assert result["gates"]["m2"]["pass"]
+    assert not result["gates"]["supported_to_total_output_facts_ratio"]["pass"]
+    assert result["gates"]["covered_to_total_reference_facts_ratio"]["pass"]
 
 
-def test_verdict_fail_on_m2_only():
+def test_verdict_fail_on_covered_to_total_reference_facts_ratio_only():
     runs = [compute_run_metrics(item(n_golden=10), 1, 10, 10, {"gf1", "gf2"})]
     result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
     assert result["verdict"] == "fail"
-    assert result["gates"]["m1"]["pass"]
-    assert not result["gates"]["m2"]["pass"]
+    assert result["gates"]["supported_to_total_output_facts_ratio"]["pass"]
+    assert not result["gates"]["covered_to_total_reference_facts_ratio"]["pass"]
 
 
 def test_mean_and_stddev_across_runs():
     it = item(n_golden=4)
     runs = [
-        compute_run_metrics(it, 1, 10, 6, {"gf1", "gf2"}),   # m1=0.6 m2=0.5
-        compute_run_metrics(it, 2, 10, 10, {"gf1", "gf2", "gf3", "gf4"}),  # m1=1.0 m2=1.0
+        compute_run_metrics(it, 1, 10, 6, {"gf1", "gf2"}),   # supported_to_total_output_facts_ratio=0.6 covered_to_total_reference_facts_ratio=0.5
+        compute_run_metrics(it, 2, 10, 10, {"gf1", "gf2", "gf3", "gf4"}),  # supported_to_total_output_facts_ratio=1.0 covered_to_total_reference_facts_ratio=1.0
     ]
     result = summarize(runs, min_supported_to_total_output_facts_ratio=0.8, min_covered_to_total_reference_facts_ratio=0.7)
-    assert result["summary"]["m1"]["mean"] == pytest.approx(0.8)
-    assert result["summary"]["m2"]["mean"] == pytest.approx(0.75)
-    assert result["summary"]["m1"]["stddev"] == pytest.approx(0.2828, abs=1e-4)
+    assert result["summary"]["supported_to_total_output_facts_ratio"]["mean"] == pytest.approx(0.8)
+    assert result["summary"]["covered_to_total_reference_facts_ratio"]["mean"] == pytest.approx(0.75)
+    assert result["summary"]["supported_to_total_output_facts_ratio"]["stddev"] == pytest.approx(0.2828, abs=1e-4)
     assert result["verdict"] == "pass"  # gate is on the mean, inclusive
 
 
 def test_stddev_zero_for_single_run():
     runs = [compute_run_metrics(item(), 1, 5, 5, {"gf1"})]
     result = summarize(runs, min_supported_to_total_output_facts_ratio=0.5, min_covered_to_total_reference_facts_ratio=0.1)
-    assert result["summary"]["m1"]["stddev"] == 0.0
-    assert result["summary"]["m2"]["stddev"] == 0.0
+    assert result["summary"]["supported_to_total_output_facts_ratio"]["stddev"] == 0.0
+    assert result["summary"]["covered_to_total_reference_facts_ratio"]["stddev"] == 0.0
+
+
+def test_within_item_stability_does_not_confuse_item_difficulty_with_drift():
+    easy = item(n_golden=2, item_id="easy")
+    hard = item(n_golden=2, item_id="hard")
+    runs = [
+        compute_run_metrics(easy, 1, 2, 2, {"gf1", "gf2"}),
+        compute_run_metrics(easy, 2, 2, 2, {"gf1", "gf2"}),
+        compute_run_metrics(hard, 1, 2, 1, {"gf1"}),
+        compute_run_metrics(hard, 2, 2, 1, {"gf1"}),
+    ]
+    result = summarize(
+        runs,
+        min_supported_to_total_output_facts_ratio=0.5,
+        min_covered_to_total_reference_facts_ratio=0.5,
+    )
+    assert result["summary"]["supported_to_total_output_facts_ratio"]["stddev"] > 0
+    assert result["summary"]["covered_to_total_reference_facts_ratio"]["stddev"] > 0
+    assert result["summary"]["within_item_stability"]["supported_to_total_output_facts_ratio"]["stddev_max"] == 0
+    assert result["summary"]["within_item_stability"]["covered_to_total_reference_facts_ratio"]["stddev_max"] == 0
 
 
 def test_summarize_empty_runs_is_pipeline_error():
@@ -254,73 +288,95 @@ def test_validate_facts_missing_field():
         validate_facts({"facts": [{"id": "f1", "type": "t"}]}, "ctx")
 
 
-def test_m1_missing_fact_id():
-    payload = m1_payload(3, 3)
+def test_supported_output_facts_missing_fact_id():
+    payload = supported_output_facts_payload(3, 3)
     payload["verdicts"].pop()
     with pytest.raises(PipelineError, match="missing=\\['f3'\\]"):
-        validate_verdicts_m1(payload, ["f1", "f2", "f3"], "ctx")
+        validate_supported_output_facts_verdicts(payload, ["f1", "f2", "f3"], "ctx")
 
 
-def test_m1_unknown_fact_id():
-    payload = m1_payload(3, 3)
+def test_supported_output_facts_unknown_fact_id():
+    payload = supported_output_facts_payload(3, 3)
     with pytest.raises(PipelineError, match="unknown=\\['f3'\\]"):
-        validate_verdicts_m1(payload, ["f1", "f2"], "ctx")
+        validate_supported_output_facts_verdicts(payload, ["f1", "f2"], "ctx")
 
 
-def test_m1_duplicate_fact_id():
+def test_supported_output_facts_duplicate_fact_id():
     payload = {"verdicts": [
         {"fact_id": "f1", "verdict": "supported", "evidence": "e"},
         {"fact_id": "f1", "verdict": "unsupported", "evidence": "e"},
     ]}
     with pytest.raises(PipelineError, match="duplicate verdict"):
-        validate_verdicts_m1(payload, ["f1"], "ctx")
+        validate_supported_output_facts_verdicts(payload, ["f1"], "ctx")
 
 
-def test_m1_invalid_verdict_value():
+def test_supported_output_facts_invalid_verdict_value():
     payload = {"verdicts": [{"fact_id": "f1", "verdict": "maybe", "evidence": "e"}]}
     with pytest.raises(PipelineError, match="'maybe'"):
-        validate_verdicts_m1(payload, ["f1"], "ctx")
+        validate_supported_output_facts_verdicts(payload, ["f1"], "ctx")
 
 
-def test_m1_numeric_score_rejected():
+def test_supported_output_facts_numeric_score_rejected():
     payload = {"verdicts": [{"fact_id": "f1", "verdict": 0.9, "evidence": "e"}]}
     with pytest.raises(PipelineError):
-        validate_verdicts_m1(payload, ["f1"], "ctx")
+        validate_supported_output_facts_verdicts(payload, ["f1"], "ctx")
 
 
-def test_m1_requires_evidence():
+def test_supported_output_facts_requires_evidence():
     payload = {"verdicts": [{"fact_id": "f1", "verdict": "supported", "evidence": ""}]}
     with pytest.raises(PipelineError, match="'evidence'"):
-        validate_verdicts_m1(payload, ["f1"], "ctx")
+        validate_supported_output_facts_verdicts(payload, ["f1"], "ctx")
 
 
-def test_m1_counts_supported():
-    assert validate_verdicts_m1(m1_payload(5, 3), [f"f{k}" for k in range(1, 6)], "ctx") == 3
+def test_supported_output_facts_counts_supported():
+    assert validate_supported_output_facts_verdicts(supported_output_facts_payload(5, 3), [f"f{k}" for k in range(1, 6)], "ctx") == 3
 
 
-def test_m2_covered_requires_known_covered_by():
-    payload = {"verdicts": [{"reference_fact_id": "gf1", "verdict": "covered", "covered_by": "f99"}]}
-    with pytest.raises(PipelineError, match="covered_by"):
-        validate_verdicts_m2(payload, ["gf1"], ["f1"], "ctx")
-
-
-def test_m2_covered_without_covered_by():
-    payload = {"verdicts": [{"reference_fact_id": "gf1", "verdict": "covered"}]}
-    with pytest.raises(PipelineError, match="covered_by"):
-        validate_verdicts_m2(payload, ["gf1"], ["f1"], "ctx")
-
-
-def test_m2_missing_must_not_set_covered_by():
+def test_expected_output_facts_covered_requires_known_covered_by():
     payload = {"verdicts": [
-        {"reference_fact_id": "gf1", "verdict": "missing", "covered_by": "f1"}
+        {
+            "reference_fact_id": "gf1",
+            "verdict": "covered",
+            "covered_by": "f99",
+            "evidence": "f99",
+        }
+    ]}
+    with pytest.raises(PipelineError, match="covered_by"):
+        validate_expected_output_facts_verdicts(payload, ["gf1"], ["f1"], "ctx")
+
+
+def test_expected_output_facts_covered_without_covered_by():
+    payload = {"verdicts": [
+        {"reference_fact_id": "gf1", "verdict": "covered", "evidence": "f1"}
+    ]}
+    with pytest.raises(PipelineError, match="covered_by"):
+        validate_expected_output_facts_verdicts(payload, ["gf1"], ["f1"], "ctx")
+
+
+def test_expected_output_facts_missing_must_not_set_covered_by():
+    payload = {"verdicts": [
+        {
+            "reference_fact_id": "gf1",
+            "verdict": "missing",
+            "covered_by": "f1",
+            "evidence": "not covered",
+        }
     ]}
     with pytest.raises(PipelineError, match="must not set"):
-        validate_verdicts_m2(payload, ["gf1"], ["f1"], "ctx")
+        validate_expected_output_facts_verdicts(payload, ["gf1"], ["f1"], "ctx")
 
 
-def test_m2_returns_covered_ids():
-    covered = validate_verdicts_m2(
-        m2_payload(3, {"gf1", "gf3"}), ["gf1", "gf2", "gf3"], ["f1"], "ctx"
+def test_expected_output_facts_requires_evidence():
+    payload = {"verdicts": [
+        {"reference_fact_id": "gf1", "verdict": "missing"}
+    ]}
+    with pytest.raises(PipelineError, match="'evidence'"):
+        validate_expected_output_facts_verdicts(payload, ["gf1"], ["f1"], "ctx")
+
+
+def test_expected_output_facts_returns_covered_ids():
+    covered = validate_expected_output_facts_verdicts(
+        expected_output_facts_payload(3, {"gf1", "gf3"}), ["gf1", "gf2", "gf3"], ["f1"], "ctx"
     )
     assert covered == {"gf1", "gf3"}
 
@@ -410,7 +466,7 @@ def test_hash_changes_when_item_changes(tmp_path):
 
 
 def make_passing_layout(tmp_path, iterations=2):
-    """1 item, 4 golden facts; each run: m1 = 4/5 = 0.8, m2 = 3/4 = 0.75."""
+    """1 item, 4 golden facts; each run: supported_to_total_output_facts_ratio = 4/5 = 0.8, covered_to_total_reference_facts_ratio = 3/4 = 0.75."""
     gdir = make_golden(tmp_path, [golden_item_payload("gs-001", 4)])
     run_dir = tmp_path / "run"
     for i in range(1, iterations + 1):
@@ -441,11 +497,15 @@ def test_main_pass_writes_results(tmp_path, capsys):
         "source": {"min_supported_to_total_output_facts_ratio": "manifest", "min_covered_to_total_reference_facts_ratio": "manifest"}
     }
     assert len(results["runs"]) == 2
-    assert results["runs"][0]["m1"]["value"] == 0.8
-    assert results["runs"][0]["m2"]["value"] == 0.75
+    assert results["runs"][0]["supported_to_total_output_facts_ratio"]["value"] == 0.8
+    assert results["runs"][0]["covered_to_total_reference_facts_ratio"]["value"] == 0.75
     report = (run_dir / "report.md").read_text()
     assert "Verdict: **PASS**" in report
     assert "| gs-001 | 1 | 0.8000 | 0.7500 |" in report
+    assert "## Verdict evidence" in report
+    assert "no output fact covers gf4" in report
+    assert results["runs"][0]["diagnostics"]["unsupported"]
+    assert results["runs"][0]["diagnostics"]["missing"]
     assert "PASS" in capsys.readouterr().out
 
 
@@ -469,7 +529,7 @@ def test_main_cli_thresholds_override_manifest(tmp_path):
 
 def test_main_missing_artifact_exit_2_lists_paths(tmp_path, capsys):
     gdir, run_dir = make_passing_layout(tmp_path)
-    missing = run_dir / "verdicts" / "gs-001" / "2-m2.json"
+    missing = run_dir / "verdicts" / "gs-001" / "2-expected-output-facts.json"
     missing.unlink()
     code = aggregate.main(base_args(gdir, run_dir))
     assert code == EXIT_PIPELINE_ERROR
@@ -477,6 +537,17 @@ def test_main_missing_artifact_exit_2_lists_paths(tmp_path, capsys):
     assert "missing run artifacts" in err
     assert str(missing) in err
     assert not (run_dir / "results.json").exists()
+
+
+def test_main_missing_raw_output_exit_2_lists_path(tmp_path, capsys):
+    gdir, run_dir = make_passing_layout(tmp_path)
+    missing = run_dir / "runs" / "gs-001" / "2.md"
+    missing.unlink()
+    code = aggregate.main(base_args(gdir, run_dir))
+    assert code == EXIT_PIPELINE_ERROR
+    err = capsys.readouterr().err
+    assert "missing run artifacts" in err
+    assert str(missing) in err
 
 
 def test_main_malformed_json_exit_2(tmp_path, capsys):

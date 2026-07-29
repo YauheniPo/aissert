@@ -15,7 +15,7 @@ related_pages:
   - ../hotspots/aggregate-py.md
   - ../hotspots/judges-and-canary.md
   - golden-and-canary.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 ## Why not a holistic 0-100 score
@@ -39,7 +39,7 @@ fact-extractor                  <- decomposes into atomic facts (JSON), NEVER se
 judge-supported-output-facts      judge-expected-output-facts   <- run in parallel, isolated from each other
      |                   |
      v                   v
-verdicts/*-m1.json   verdicts/*-m2.json
+verdicts/*-supported-output-facts.json   verdicts/*-expected-output-facts.json
      |___________________|
              v
        aggregate.py                 <- ALL math and the verdict, never an LLM
@@ -69,8 +69,8 @@ this repo — see the model-pin playbook in
 | Agent | Job | Sees | Never sees |
 |---|---|---|---|
 | `fact-extractor` | Split one raw skill output into atomic facts | the raw output only | golden facts (would bias decomposition toward the "right" answer) |
-| `judge-supported-output-facts` (m1) | Per extracted fact: `supported`/`unsupported` | extracted facts + golden facts | the other judge, thresholds, other iterations |
-| `judge-expected-output-facts` (m2) | Per golden fact: `covered`/`missing` | golden facts + extracted facts | same |
+| `judge-supported-output-facts` (precision) | Per extracted fact: `supported`/`unsupported` | extracted facts + golden facts | the other judge, thresholds, other iterations |
+| `judge-expected-output-facts` (recall) | Per golden fact: `covered`/`missing` | golden facts + extracted facts | same |
 
 Each prompt's only calibration lever (besides the canary) is its decision
 rubric + anchored right/wrong examples. If a judge systematically misjudges a
@@ -86,6 +86,12 @@ validate golden set → 2. generate (clean-context subagent per item x
 iteration, dispatched in parallel) → 3. extract (parallel per output) → 4.
 judge (parallel) → 5. aggregate. Read the file directly for the exact
 per-step contract details — this page is a map, not a restatement.
+
+Step 0 covers all three runtime agents: frozen fact sets isolate both judge
+rubrics, while separate synthetic raw-output cases regression-test extractor
+splitting/deduplication without exposing it to golden facts. Canary pass/fail
+is computed in Python with separate precision, recall, non-borderline, and
+extractor gates.
 
 `commands/eval.md` is a thin wrapper passing `$ARGUMENTS` through; touch it
 only if the slash-command signature itself changes.

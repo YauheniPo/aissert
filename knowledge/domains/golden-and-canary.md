@@ -1,7 +1,7 @@
 ---
 title: Golden sets & canary — two different test layers
 kind: domain
-summary: Golden sets test the skill; canary tests the judges. Easy to conflate, and conflating them breaks the harness's trust model.
+summary: Golden sets test the skill; canary tests the three runtime evaluation agents. Easy to conflate, and conflating them breaks the harness's trust model.
 source_paths:
   - skills/aissert/references/golden-set-schema.md
   - skills/aissert/references/canary-schema.md
@@ -11,16 +11,16 @@ related_pages:
   - ../index.md
   - eval-pipeline.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 ## The distinction that matters
 
 - **Golden set** (`golden/<target-skill>/`) answers: *is the skill good at
   its job?* One set per target skill.
-- **Canary** (`canary/`) answers: *are the judges still deciding the way a
-  human calibrated them to?* Tests the measuring instrument, not the skill
-  under test.
+- **Canary** (`canary/`) answers: *are the extractor and judges still behaving
+  the way a human calibrated them to?* Tests the measuring instrument, not
+  the skill under test.
 
 If you only remember one thing from this page: after changing a judge prompt
 or the model pin, a passing golden-set eval proves nothing if the canary
@@ -37,7 +37,7 @@ golden/<target-skill>/
 
 `reference_facts` are extracted once at set-creation time and human-reviewed —
 never re-extracted at eval time (would make the harness grade the
-fact-extractor against itself). `weights` affects **recall (m2) only**;
+fact-extractor against itself). `weights` affects **recall only**;
 empty `{}` = uniform. Set hash (SHA-256 over manifest + all items) links a
 `results.json` to the exact data version — changing any byte = new baseline,
 old trends stop being comparable, and that's by design, not a regression.
@@ -58,13 +58,12 @@ not merely gitignored, or they leak on every reinstall regardless.
 
 ## Canary (contract: `canary-schema.md`)
 
-Each item freezes **one judge's exact input** — golden facts + extracted
-facts, not the raw skill output (extraction is nondeterministic, so expected
-verdicts can only be pinned to a frozen fact set) — plus hand-labeled
-`expected` verdicts. Before every eval, the orchestrator reruns both judges
-on these frozen inputs and `check_canary.py` compares. Divergence = the
-judge (model or rubric) drifted — the **whole eval run is invalid**, fix the
-rubric, never a threshold.
+Judge items freeze **one judge's exact input** — golden facts + extracted
+facts — plus hand-labeled `expected` verdicts. Separate extractor items freeze
+raw output and use tolerant structural/content anchors rather than exact
+paraphrase text. Before every eval, the orchestrator reruns the matching
+runtime agent and `check_canary.py` compares. Divergence means the **whole
+eval run is invalid**.
 
 `reviewed: false` until a human hand-verifies `expected` —
 `check_canary.py` refuses unreviewed items outright (exit 2), because a
@@ -72,12 +71,11 @@ canary pre-filled from judge output and never reviewed would just test the
 judge against itself. See [judges-and-canary.md](../hotspots/judges-and-canary.md)
 for the review workflow and a worked borderline example.
 
-`borderline: true` marks a deliberately hard case (paraphrase limit,
-granularity mismatch, partial overlap) — the set must contain several, or
-canary only calibrates the obvious cases. `manifest.json.min_agreement`
-(currently `0.90`, relaxed from `1.0` on 2026-07-21 — see
-[judges-and-canary.md](../hotspots/judges-and-canary.md) for the live-run
-evidence) is the minimum fraction of matching verdicts to pass; relax only
-with evidence a specific borderline case legitimately oscillates.
+`borderline: true` marks a deliberately hard judge case. The manifest keeps
+an overall floor, per-judge floors, an exact non-borderline gate, and an exact
+extractor gate. Precision is the only relaxed group (`0.85`, below the
+observed original-set floor of `56/64 = 0.875`); recall, non-borderline cases,
+and extractor cases remain `1.0`. This prevents a recall regression from
+being hidden inside pooled precision noise.
 
 Same data-boundary rule as golden sets: only synthetic canary items here.

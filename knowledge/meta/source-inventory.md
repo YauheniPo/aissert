@@ -18,7 +18,7 @@ source_paths:
 related_pages:
   - ../index.md
   - lint-rules.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 Coverage = union of every page's `source_paths`. A high-signal path (see
@@ -36,12 +36,13 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `agents/fact-extractor.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `agents/judge-supported-output-facts.md`, `agents/judge-expected-output-facts.md` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
 | `skills/aissert/SKILL.md`, `commands/eval.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
+| `skills/example-bug-summarizer/` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `skills/aissert/scripts/aggregate.py`, `validate_golden.py` | [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
 | `skills/aissert/scripts/check_canary.py` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
 | `skills/aissert/scripts/run_target.py` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `skills/aissert/references/*.md` | [hotspots/aggregate-py.md](../hotspots/aggregate-py.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md), [domains/golden-and-canary.md](../domains/golden-and-canary.md) |
-| `golden/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md) |
-| `canary/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
+| `golden/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `canary/items/`, `canary/extractor-items/`, `canary/manifest.json` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `tests/` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
 | `.github/PULL_REQUEST_TEMPLATE.md`, `.github/workflows/ci.yml`, `claude.yml`, `auto-release.yml`, `release.yml`, `.github/CLAUDE_CODE_REVIEW_CONFIG.md` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/build_plugin_zip.py`, `scripts/bump_version.py` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |

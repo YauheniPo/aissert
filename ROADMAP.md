@@ -6,8 +6,8 @@ easier to adopt, easier to debug, and harder to misuse.
 ## Near Term
 
 - Quickstart examples for creating a golden set from scratch.
-- Better `report.md` sections for worst unsupported facts and worst missing
-  golden facts.
+- Evidence clustering beyond the current first-20 unsupported/missing rows
+  (group recurring failure causes and rank by frequency/impact).
 - Deterministic golden-set quality lint:
   - duplicate or near-duplicate golden facts;
   - overly broad facts;

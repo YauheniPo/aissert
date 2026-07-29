@@ -7,7 +7,7 @@ source_paths:
 related_pages:
   - ../index.md
   - lint-rules.md
-last_validated_commit: 2ea2ad69e142faeae395e4f9105cfed1c2d84969
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 Every page under `knowledge/` except `index.md` and `log.md` needs this

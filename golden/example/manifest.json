@@ -1,7 +1,7 @@
 {
-  "schema_version": 4,
+  "schema_version": 6,
   "target_skill": "example-bug-summarizer",
-  "set_version": "1.0.4",
+  "set_version": "1.0.6",
   "owner": "epopovich",
   "defaults": {
     "min_covered_to_total_reference_facts_ratio": 0.70,

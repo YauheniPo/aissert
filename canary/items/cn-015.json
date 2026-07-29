@@ -1,0 +1,60 @@
+{
+  "id": "cn-015",
+  "judge": "recall",
+  "borderline": false,
+  "reviewed": true,
+  "source": {
+    "golden_item": "synthetic-qualifier-recall",
+    "iteration": 1,
+    "note": "Hand-authored 2026-07-28 to cover weaker claims, contradiction, and added specificity"
+  },
+  "input": {
+    "reference_facts": [
+      {
+        "id": "gf1",
+        "text": "On Android 14, avatar upload crashes for files larger than 10 MB"
+      },
+      {
+        "id": "gf2",
+        "text": "A reset link arrives at the account email"
+      },
+      {
+        "id": "gf3",
+        "text": "The reset link expires after 24 hours"
+      }
+    ],
+    "output_facts": [
+      {
+        "id": "f1",
+        "type": "expectation",
+        "text": "Avatar upload can fail"
+      },
+      {
+        "id": "f2",
+        "type": "expectation",
+        "text": "A reset link arrives at the account email within 60 seconds"
+      },
+      {
+        "id": "f3",
+        "type": "expectation",
+        "text": "The reset link never expires"
+      }
+    ]
+  },
+  "expected": {
+    "verdicts": [
+      {
+        "reference_fact_id": "gf1",
+        "verdict": "missing"
+      },
+      {
+        "reference_fact_id": "gf2",
+        "verdict": "covered"
+      },
+      {
+        "reference_fact_id": "gf3",
+        "verdict": "missing"
+      }
+    ]
+  }
+}

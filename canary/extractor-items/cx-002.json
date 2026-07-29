@@ -1,0 +1,19 @@
+{
+  "id": "cx-002",
+  "reviewed": true,
+  "source": {
+    "note": "Synthetic deduplication, hedge-preservation, and no-inference regression case"
+  },
+  "raw_output": "## Summary\nLogin sometimes fails after the session token expires.\n## Details\nThe login may occasionally fail once the session token has expired.",
+  "expected": {
+    "facts": [
+      {
+        "id": "f1",
+        "type": "expectation",
+        "must_contain": ["login", "session token"],
+        "must_not_contain": ["race condition"]
+      }
+    ],
+    "must_not_contain": ["race condition"]
+  }
+}
