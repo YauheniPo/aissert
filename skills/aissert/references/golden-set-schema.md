@@ -4,7 +4,7 @@ Contract for golden dataset directories consumed by the aissert eval harness.
 This file is the single source of truth for the golden set format; agent prompts
 and scripts must reference it, never restate a diverging copy.
 
-Schema version: **4** (shared with `canary-schema.md` via aggregate.py's
+Schema version: **6** (shared with `canary-schema.md` via aggregate.py's
 `SCHEMA_VERSION` — a bump here forces a matching bump there even when the
 canary contract itself hasn't changed)
 
@@ -25,7 +25,7 @@ the filename (without `.json`) must equal the item's `id`.
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 6,
   "target_skill": "test-cases-writer",
   "set_version": "1.0.0",
   "owner": "epopovich",
@@ -38,7 +38,7 @@ the filename (without `.json`) must equal the item's `id`.
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `schema_version` | int | yes | Must be `4`. |
+| `schema_version` | int | yes | Must be `6`. |
 | `target_skill` | string | yes | Skill this set evaluates. Recorded in results.json. |
 | `set_version` | string | yes | Bump on any content change. Changing the set invalidates old trends. |
 | `owner` | string | yes | Person responsible for staleness review (DESIGN.md §7.6). |
@@ -78,14 +78,14 @@ the filename (without `.json`) must equal the item's `id`.
 
 ### Weights semantics
 
-`weights` maps reference fact id → weight and affects **recall (m2) only**:
+`weights` maps reference fact id → weight and affects **recall only**:
 
-- Empty object `{}` — uniform weighting: `m2 = covered / total_reference_facts`.
+- Empty object `{}` — uniform weighting: `recall = covered / total_reference_facts`.
 - Non-empty — keys must be exactly the set of reference fact ids of this item, values
   must be numbers in (0, 1], and must sum to 1.0 (tolerance 1e-9). Then
-  `m2 = sum of weights of covered reference facts`.
+  `recall = sum of weights of covered reference facts`.
 
-Weights never apply to precision (m1): output facts vary per run and have no
+Weights never apply to precision: output facts vary per run and have no
 stable identity to weight.
 
 ## Set hash

@@ -1,21 +1,24 @@
-# Canary Set Schema
+# Runtime-Agent Canary Set Schema
 
-Contract for the judge regression set (DESIGN.md §7.3). Single source of truth.
+Contract for the runtime-agent regression set (DESIGN.md §7.3). Single source
+of truth.
 
-The canary answers one question before every eval: **do the judges still decide
-the way a human calibrated them to?** Each item freezes a judge's exact input
-(reference facts + output facts) and the hand-labeled expected verdicts. The
-orchestrator re-runs the judges on these frozen inputs and `check_canary.py`
-compares the verdicts. Divergence = the judge (model or rubric) drifted — the
-eval run is INVALID; fix the rubric, never the thresholds or the skill.
+The canary answers one question before every eval: **do the runtime evaluation
+agents still behave the way a human calibrated them to?** Judge items freeze a
+judge's exact input and expected verdicts. Extractor items freeze a raw output
+plus tolerant structural/content anchors. The orchestrator re-runs the matching
+agent and `check_canary.py` compares the result. Divergence means the eval run
+is INVALID.
 
-The canary freezes **`fact-extractor`'s output** (`output_facts`), not the
-target skill's raw output text: fact extraction is itself nondeterministic, so
-expected verdicts can only be pinned to a frozen fact set, not to a raw output
-that would produce different facts on every re-extraction. The extractor is
-calibrated separately via monthly meta-eval (DESIGN.md §7.8).
+Judge items freeze **`fact-extractor`'s output** (`output_facts`) so judge drift
+is measured independently from extractor drift. Separate extractor items use
+raw output but compare fact count, ids, types, and `must_contain`/
+`must_not_contain` text anchors rather than exact wording. Monthly sampled
+meta-eval remains necessary
+for broad real-output quality; the synthetic extractor cases are a regression
+gate, not a replacement for it.
 
-Schema version: **4** (shared with `golden-set-schema.md` via aggregate.py's
+Schema version: **6** (shared with `golden-set-schema.md` via aggregate.py's
 `SCHEMA_VERSION` — every time the golden set's threshold field names or
 `reference_facts`/`output_facts` fields get renamed, this bumps too, even
 though this contract's own shape didn't change)
@@ -25,25 +28,41 @@ though this contract's own shape didn't change)
 ```
 canary/
 ├── manifest.json
-└── items/
-    ├── cn-001.json
-    └── cn-002.json
+├── items/
+│   ├── cn-001.json
+│   └── cn-002.json
+└── extractor-items/
+    └── cx-001.json
 ```
 
 ## manifest.json
 
 ```json
 {
-  "schema_version": 4,
-  "description": "judge regression set built from the milestone-4 pilot",
-  "min_agreement": 1.0
+  "schema_version": 6,
+  "description": "runtime-agent regression set",
+  "min_agreement": 0.90,
+  "min_agreement_by_judge": {
+    "precision": 0.85,
+    "recall": 1.0
+  },
+  "min_non_borderline_agreement": 1.0,
+  "min_extractor_agreement": 1.0
 }
 ```
 
-- `min_agreement` — number in (0, 1]: minimum fraction of matching verdicts
-  across all items for the canary to pass. Start at 1.0 (any flip = drift);
-  relax only with evidence that a specific borderline case legitimately
-  oscillates.
+- `min_agreement` — overall judge-verdict floor.
+- `min_agreement_by_judge` — optional per-judge floors; omitted keys inherit
+  `min_agreement`. Use this to prevent drift in one judge from being hidden by
+  another judge's stable verdicts.
+- `min_non_borderline_agreement` — exactness floor across ordinary judge cases;
+  defaults to `1.0`.
+- `min_extractor_agreement` — fraction of extractor items with no mismatch;
+  defaults to `1.0`.
+
+All thresholds are numbers in `(0, 1]`. Relax only the affected group and only
+with repeated evidence that its reviewed borderline cases legitimately
+oscillate.
 
 ## Item file (`items/<id>.json`)
 
@@ -74,17 +93,44 @@ canary/
 | `input.output_facts` | Frozen skill-output facts (contract: results-schema.md `facts`). |
 | `expected.verdicts` | Hand-labeled truth. For `precision`: one per extracted fact, `fact_id` + `verdict` (`supported`/`unsupported`). For `recall`: one per reference fact, `reference_fact_id` + `verdict` (`covered`/`missing`). Evidence/`covered_by` are NOT compared — only verdict values. |
 
+The checker validates both frozen input arrays against their main schemas and
+requires the expected verdict ids to cover the applicable frozen ids exactly.
+
+## Extractor item (`extractor-items/<id>.json`)
+
+```json
+{
+  "id": "cx-001",
+  "reviewed": true,
+  "raw_output": "Tap 'Forgot password' and verify a reset link arrives.",
+  "expected": {
+    "facts": [
+      {
+        "id": "f1",
+        "type": "action",
+        "must_contain": ["Forgot password"],
+        "must_not_contain": []
+      }
+    ],
+    "must_not_contain": ["invented root cause"]
+  }
+}
+```
+
+Expected ids must be sequential `f1..fN`. The actual facts must have exactly
+those ids and types. Substring comparisons are case-insensitive. An empty
+`expected.facts` array explicitly checks the extractor's no-claims path.
+
 ## Comparison rules (check_canary.py)
 
-- Actual judge outputs are stored one file per canary item:
+- Actual agent outputs are stored one file per canary item:
   `<verdicts-dir>/<canary-item-id>.json`, in the exact judge output contract
-  from results-schema.md.
-- Actual verdict ids must cover the expected ids exactly; a malformed judge
-  response is a pipeline error (exit 2), never a mismatch.
-- Agreement = matching verdict values / total expected verdicts, pooled across
-  all items.
-- Exit codes: `0` agreement >= min_agreement; `1` divergence — judges drifted,
-  the eval run is invalid; `2` pipeline error (unreviewed items, missing files,
+  or facts contract from results-schema.md.
+- Judge actuals are validated by the same functions as `aggregate.py`;
+  malformed evidence, ids, or `covered_by` are pipeline errors.
+- All overall, per-judge, non-borderline, and extractor gates must pass.
+- Exit codes: `0` all grouped gates pass; `1` runtime-agent divergence, so the
+  eval run is invalid; `2` pipeline error (unreviewed items, missing files,
   malformed JSON).
 
 ## Data boundary

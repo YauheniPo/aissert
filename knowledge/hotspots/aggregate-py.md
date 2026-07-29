@@ -12,12 +12,13 @@ related_pages:
   - ../index.md
   - ../domains/eval-pipeline.md
   - ../domains/change-playbooks.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 `aggregate.py` is the most important file in the repo: it is the **only**
-place that computes m1/m2, applies the min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio gate, and
-decides `verdict`.
+place that computes `supported_to_total_output_facts_ratio` and
+`covered_to_total_reference_facts_ratio`, applies their minimum thresholds,
+and decides `verdict`.
 CLAUDE.md hard rule: all scoring math and pass/fail decisions live in Python,
 never delegated to an LLM.
 
@@ -25,11 +26,11 @@ never delegated to an LLM.
 
 `validate_golden.py` and `check_canary.py` both `import` from `aggregate.py`
 (`load_golden_set`, `PipelineError`, `_load_json`, `_require_str`,
-`M1_VERDICTS`, `M2_VERDICTS`) instead of reimplementing validation. This is
-deliberate: validation and aggregation physically cannot disagree on the
-contract. **If you change one of these functions' behavior, both other
-scripts' tests need re-checking** — `test_aggregate.py` alone isn't enough
-coverage for that change.
+`validate_facts`, `validate_supported_output_facts_verdicts`, `validate_expected_output_facts_verdicts`) instead of
+reimplementing validation. The canary therefore rejects the same malformed
+evidence, ids, and `covered_by` values as a real eval artifact. **If you
+change one of these functions' behavior, both other scripts' tests need
+re-checking** — `test_aggregate.py` alone isn't enough coverage.
 
 ## Exit code discipline — the distinction that matters everywhere in this repo
 
@@ -45,8 +46,13 @@ measurement itself is broken.
 
 ## Key invariants to preserve when editing
 
-- `m1 = supported / total_output_facts`; `m2 = covered / total_reference_facts` (or the
-  weighted sum when the item defines non-empty `weights`).
+- `supported_to_total_output_facts_ratio = supported / total_output_facts`;
+  `covered_to_total_reference_facts_ratio = covered / total_reference_facts`
+  (or the weighted sum when the item defines non-empty `weights`).
+- Every supported-output-facts and expected-output-facts verdict has non-empty
+  evidence. A covered expected-output-facts verdict also
+  points to a known output fact via `covered_by`; if several output facts are
+  needed, evidence names the additional ids.
 - Extraction sanity check runs **before** any verdict is read: a run with 0
   output facts, or `count * 3 < item_median`, is a pipeline error (2), not
   a low score — garbage extraction breaks both metrics at once, so it can't
@@ -55,10 +61,18 @@ measurement itself is broken.
   gate — recall doesn't punish verbosity, precision punishes length
   mechanically; this is the counterweight, kept visible on purpose
   (anti-Goodhart).
+- Top-level metric stddev is all-run dispersion and includes differences in
+  item difficulty. `summary.within_item_stability` computes iteration stddev
+  per item first, then reports mean/max; use that field for model stability.
+- `results.json` retains unsupported/missing evidence per run and `report.md`
+  renders the first 20 rows. Verdict artifacts remain canonical when the
+  diagnostic list is longer.
 - Resume mode: missing artifacts are listed by exact path (exit 2) so the
-  orchestrator reruns only those, never the full item x iteration matrix —
-  don't reintroduce a "just rerun everything" fallback, 500 subagent calls
-  will have partial failures as routine, not exceptional.
+  orchestrator reruns only those, never the full item x iteration matrix.
+  Raw `runs/{item}/{i}.md` files are required too: metrics without their raw
+  source would violate traceability even if facts/verdicts exist. Don't
+  reintroduce a "just rerun everything" fallback, 500 subagent calls will
+  have partial failures as routine, not exceptional.
 - Golden-set hash: SHA-256 over `manifest.json` + sorted `items/*.json`.
   Changing any byte in the set changes the hash; that's the mechanism that
   invalidates old trends on data change, not a bug to "fix" by keeping the

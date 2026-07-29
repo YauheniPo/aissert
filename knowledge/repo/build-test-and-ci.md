@@ -21,7 +21,7 @@ related_pages:
   - ../index.md
   - ../hotspots/aggregate-py.md
   - ../domains/change-playbooks.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 ## Local dev loop (plugin)
@@ -33,6 +33,13 @@ last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
 
 After editing `agents/*.md` or manifests: `/reload-plugins`. `SKILL.md` edits
 apply immediately, no reload needed.
+
+One-command refresh from a plain terminal:
+`scripts/claude/reinstall_plugin.sh` — plugin schema check, forced
+uninstall+install (needed because `/plugin update` is version-gated and never
+re-copies an unchanged-version working tree), then `exec claude` for a fresh
+session. Must run outside a Claude Code session: the in-session sandbox
+blocks writes to `~/.claude/plugins`.
 
 For other users/teams (no clone needed) — this repo doubles as its own
 marketplace (`.claude-plugin/marketplace.json`), so anyone can point at the
@@ -47,9 +54,14 @@ Documented in README.md's "Install (for users)" section.
 
 Run:
 ```
-/aissert:eval golden_set=golden/example target_skill=<skill> iterations=3
-/aissert:eval golden_set=golden/example target_skill=<skill> --smoke   # 3 items x 2 iterations
+/aissert:eval golden_set=golden/example iterations=3
+/aissert:eval golden_set=golden/example --smoke   # 3 items x 2 iterations
 ```
+
+The example manifest selects the bundled `example-bug-summarizer`, so this
+path is self-contained. `golden/example/README.md` has the one-session
+`claude --plugin-dir .` flow. Pass `target_skill=<skill>` only as an explicit
+manifest mismatch check or when using a different matching dataset.
 
 ## Tests
 
@@ -62,9 +74,9 @@ clear reason). Test files:
 
 | File | Covers |
 |---|---|
-| `test_plugin_schema.py` | Manifest validity, agent/skill/command frontmatter, version sync. |
+| `test_plugin_schema.py` | Manifest validity, agent/skill/command frontmatter, version sync, and golden target skill availability. |
 | `test_aggregate.py` | `aggregate.py` — verdict logic, sanity checks, resume, edge cases. |
-| `test_check_canary.py` | `check_canary.py`. |
+| `test_check_canary.py` | Strict judge artifacts, grouped gates, and tolerant extractor canary cases. |
 | `test_scripts.py` | `validate_golden.py`, `run_target.py`. |
 | `test_wiki.py` | `scripts/wiki/lib.py` — frontmatter parsing, significant-change heuristics, lint checks. |
 | `test_claude_automation.py` | `.claude` settings, hook helpers, and `@claude` workflow wiring. |
@@ -90,11 +102,11 @@ Three jobs, on every PR and push to `main`:
   (see [judges-and-canary.md](../hotspots/judges-and-canary.md) for the
   analogous reasoning on canary) — this is visibility, not a gate.
 
-**Not run on every PR** — canary eval and baseline runs. They call `claude
--p` (real API cost) and are `workflow_dispatch` + weekly only. If your change
-needs canary verification (see
-[change-playbooks.md](../domains/change-playbooks.md)), do it locally/by hand
-before merging — CI will not catch a canary regression for you.
+**Not run on every PR** — live canary and baseline runs. They require real
+model calls. Canary is mandatory as step 0 of every `/aissert:eval`, but this
+repository does not yet contain the standalone scheduled workflow listed in
+the roadmap. If a prompt change needs confirmation before the next eval, run
+the canary locally/by hand.
 
 ## Claude Code automation
 

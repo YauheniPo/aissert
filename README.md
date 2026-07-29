@@ -61,11 +61,14 @@ Install the plugin in Claude Code:
 /plugin install aissert@aissert
 ```
 
-Run a smoke eval against a skill:
+Run the bundled skill against the synthetic example set:
 
 ```
-/aissert:eval golden_set=golden/example target_skill=<skill> --smoke
+/aissert:eval golden_set=golden/example --smoke
 ```
+
+The example manifest selects the included `example-bug-summarizer` skill, so
+this command works without a separate target skill installation.
 
 ## Install (for users)
 
@@ -105,6 +108,18 @@ never merely gitignored inside it. See `knowledge/domains/golden-and-canary.md`.
 
 After editing agents or manifests: `/reload-plugins`. Skill edits apply immediately.
 
+One-command refresh from a plain terminal — schema check, forced reinstall,
+then a fresh Claude Code session:
+
+```
+scripts/claude/reinstall_plugin.sh
+```
+
+`/plugin update` alone is not enough here: it is version-gated, so with an
+unchanged `plugin.json` version it never re-copies the working tree — hence
+the forced uninstall+install. Run the script outside a Claude Code session:
+the in-session command sandbox blocks writes to `~/.claude/plugins`.
+
 Alternative for a single session, no persistent install (CLI only):
 
 ```
@@ -128,6 +143,9 @@ golden set's own `manifest.json`. Pass `target_skill=<skill>` explicitly only
 when you want the preflight validator to double-check you're pointing at the
 right dataset — it then fails before any LLM calls if the two disagree.
 
+For the complete local example setup and commands, see
+[`golden/example/README.md`](golden/example/README.md).
+
 Thresholds default from the set's `manifest.json` (`min_supported_to_total_output_facts_ratio`
 = min mean precision, `min_covered_to_total_reference_facts_ratio` = min mean recall); pass
 `min_supported_to_total_output_facts_ratio=` / `min_covered_to_total_reference_facts_ratio=` to override.
@@ -146,19 +164,23 @@ python3 skills/aissert/scripts/validate_golden.py <set-dir> --target-skill <skil
 ```
 
 `golden/example/` is a synthetic demo set (fictional app) that doubles as the CI
-fixture. **No corporate data in this repo, ever** — real sets live in internal
-storage and are passed by path.
+fixture. Its target, `skills/example-bug-summarizer/`, is bundled solely as a
+stable local test subject. **No corporate data in this repo, ever** — real sets
+live in internal storage and are passed by path.
 
-## Canary (judge regression set)
+## Canary (runtime-agent regression set)
 
-`canary/` freezes judge inputs with hand-labeled expected verdicts
+`canary/` freezes judge inputs with hand-labeled expected verdicts and includes
+small synthetic raw-output cases for `fact-extractor`
 (contract: [skills/aissert/references/canary-schema.md](skills/aissert/references/canary-schema.md)).
 The orchestrator re-runs judges on them before every eval;
 `skills/aissert/scripts/check_canary.py` compares. Divergence = invalid run.
 
-Items are drafted from pilot judge output with `reviewed: false` and are
+Judge items are drafted from pilot judge output with `reviewed: false` and are
 **refused by the checker until a human verifies each `expected` verdict and
-flips `reviewed: true`**. Borderline items are marked.
+flips `reviewed: true`**. Borderline items are marked. Precision, recall,
+non-borderline, and extractor agreement have separate gates so stability in
+one group cannot hide drift in another.
 
 ## Packaging & releases
 
@@ -206,8 +228,9 @@ golden set, its min_supported_to_total_output_facts_ratio/min_covered_to_total_r
 pytest tests/ -q
 ```
 
-Python 3.12, stdlib only. CI runs schema lint + tests per PR; canary eval is
-manual/scheduled only (costs API money).
+Python 3.12, stdlib only. CI runs schema lint + tests per PR; live canary is
+mandatory inside `/aissert:eval` but has no standalone scheduled workflow yet
+(model calls cost API money).
 
 ### Claude Code automation
 

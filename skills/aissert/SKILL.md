@@ -45,11 +45,18 @@ score, or judge anything yourself. All numbers and the verdict come from
 Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
 
 0. **Canary** (when a canary set exists for this golden set, contract:
-   `references/canary-schema.md`) — run both judges on every canary item's
-   frozen input, save each output to `<run_dir>/canary/<canary-item-id>.json`,
-   then run `scripts/check_canary.py --canary-set <dir> --verdicts-dir
-   <run_dir>/canary`. Non-zero exit = judges drifted, the whole run is invalid —
-   stop, report, do NOT proceed to evaluation.
+   `references/canary-schema.md`) — dispatch every canary item to its matching
+   runtime agent:
+   - `items/*.json` with `judge: precision` → `judge-supported-output-facts`
+   - `items/*.json` with `judge: recall` → `judge-expected-output-facts`
+   - `extractor-items/*.json` → `fact-extractor`, using only `raw_output` and
+     the pasted facts contract (never judge inputs or golden data)
+
+   Save each output to `<run_dir>/canary/<canary-item-id>.json`, then run
+   `scripts/check_canary.py --canary-set <dir> --verdicts-dir
+   <run_dir>/canary`. Dispatch independent canary calls in parallel. Non-zero
+   exit means runtime-agent drift or malformed output; the whole run is
+   invalid — stop, report, and do NOT proceed to evaluation.
 1. **Validate** — run
    `scripts/validate_golden.py <golden_set>` (add `--target-skill <target_skill>`
    only if the user passed `target_skill` explicitly). Fail fast on non-zero
@@ -67,10 +74,10 @@ Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
    raw output. Save to `facts/{item}/{i}.json`. Independent per output — dispatch
    in parallel across all outputs, not one at a time.
 4. **Judge** — per output, both judges in parallel, isolated:
-   - `judge-supported-output-facts`: m1 contract + extracted facts + golden facts →
-     `verdicts/{item}/{i}-m1.json`
-   - `judge-expected-output-facts`: m2 contract + golden facts + extracted facts →
-     `verdicts/{item}/{i}-m2.json`
+   - `judge-supported-output-facts`: supported-output-facts contract + extracted facts + golden facts →
+     `verdicts/{item}/{i}-supported-output-facts.json`
+   - `judge-expected-output-facts`: expected-output-facts contract + golden facts + extracted facts →
+     `verdicts/{item}/{i}-expected-output-facts.json`
 5. **Aggregate** — run:
    ```
    python3 scripts/aggregate.py --run-dir <run_dir> --golden-set <golden_set> \

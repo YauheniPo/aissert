@@ -8,9 +8,11 @@ deterministic Python, never LLM.
 Status: design approved, milestones 1–4 done: 1–3 (contracts, aggregate.py +
 tests, plugin scaffold, schema-lint CI, agent prompts, scripts, synthetic
 golden/example); 4 (canary built and hand-reviewed, all items `reviewed: true`;
-a live judge rerun against a real target skill found genuine judge-supported-output-facts
-drift on borderline items, fixed via rubric + `min_agreement` relaxed to 0.90
-with evidence — see knowledge/hotspots/judges-and-canary.md). `aggregate.py`
+a live judge rerun against a real target skill found genuine
+judge-supported-output-facts drift on borderline items. Canary gates are now
+scoped: precision `0.85` based on the observed original-set floor, recall
+`1.0`, non-borderline `1.0`, extractor `1.0` — see
+knowledge/hotspots/judges-and-canary.md). `aggregate.py`
 now writes both `results.json` and a compact `report.md`; richer evidence
 clustering remains future polish. Milestone 5 (baseline run, min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio derived from
 it, report-only period, then gate) has not started — current min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio in
@@ -26,16 +28,16 @@ Holistic 0–100 LLM scores are high-variance. Instead:
 
 1. **fact-extractor** agent decomposes a skill's raw output into atomic facts (JSON).
 2. **judge-supported-output-facts** agent: for each extracted fact → binary `supported/unsupported`
-   vs reference facts (metric 1 = precision / grounding).
+   vs reference facts (precision / grounding).
 3. **judge-expected-output-facts** agent: for each reference fact → binary `covered/missing`
-   (metric 2 = recall / completeness).
+   (recall / completeness).
 4. **aggregate.py** computes the numbers and the verdict. Exit code = CI gate.
 
 ```
 runs/{item}/{i}.md
   └─ fact-extractor        → facts.json
-       ├─ judge-supported-output-facts  → verdicts_m1.json
-       └─ judge-expected-output-facts     → verdicts_m2.json
+       ├─ judge-supported-output-facts  → verdicts_supported_output_facts.json
+       └─ judge-expected-output-facts     → verdicts_expected_output_facts.json
             └─ aggregate.py → results.json, report.md, exit code
 ```
 
@@ -73,20 +75,22 @@ aissert/
 │   ├── judge-supported-output-facts.md
 │   └── judge-expected-output-facts.md
 ├── skills/
-│   └── aissert/
-│       ├── SKILL.md               # orchestrator: dispatch only, never evaluates
-│       ├── references/
-│       │   ├── golden-set-schema.md
-│       │   └── results-schema.md
-│       └── scripts/
-│           ├── validate_golden.py
-│           ├── run_target.py      # CI-only: claude -p wrapper for headless runs
-│           └── aggregate.py
+│   ├── aissert/
+│   │   ├── SKILL.md               # orchestrator: dispatch only, never evaluates
+│   │   ├── references/
+│   │   │   ├── golden-set-schema.md
+│   │   │   └── results-schema.md
+│   │   └── scripts/
+│   │       ├── validate_golden.py
+│   │       ├── run_target.py      # CI-only: claude -p wrapper for headless runs
+│   │       └── aggregate.py
+│   └── example-bug-summarizer/
+│       └── SKILL.md               # bundled synthetic target for local evals
 ├── commands/
 │   └── eval.md                    # thin slash-command wrapper over the skill
 ├── golden/
 │   └── example/                   # SYNTHETIC demo set only (doubles as CI fixture)
-├── canary/                        # judge regression set (references/canary-schema.md)
+├── canary/                        # runtime-agent regression set (references/canary-schema.md)
 ├── tests/                         # pytest: aggregate.py units + canary fixtures
 ├── .github/workflows/ci.yml
 └── README.md
@@ -111,17 +115,20 @@ Rules:
 - Prompt contains atomicity rules + 3–5 anchored right/wrong decomposition examples.
 - Riskiest component: garbage extraction breaks both metrics at once. Guard: sanity
   check in aggregate.py (fact count vs output size; 0 facts or <1/3 of the median
-  across iterations = pipeline failure, NOT a skill failure).
+  across iterations = pipeline failure, NOT a skill failure), plus reviewed
+  synthetic extractor canary cases for compound splitting, qualifier retention,
+  deduplication, no-inference, and the empty-facts path.
 
 Reference-side facts are extracted ONCE at golden-set creation time, human-reviewed,
 and stored in the set (`reference.reference_facts`). Never re-extracted at eval time.
 
-### agents/judge-supported-output-facts.md (metric 1)
+### agents/judge-supported-output-facts.md (precision)
 - Input: facts.json + reference_facts.
 - Output per fact: `{"fact_id","verdict":"supported|unsupported","evidence"}`.
 
-### agents/judge-expected-output-facts.md (metric 2)
-- Inverse direction: per reference fact → `covered|missing` with fact_id reference.
+### agents/judge-expected-output-facts.md (recall)
+- Inverse direction: per reference fact → `covered|missing` with a validated
+  `covered_by` fact id when covered and non-empty evidence for every verdict.
 
 Isolation (both judges): run in parallel, never see each other's verdicts, the
 thresholds, or other iterations.
@@ -147,10 +154,12 @@ Item:
 }
 ```
 
-- `weights` are per-reference-fact recall weights and affect **m2 only**: empty `{}` =
-  uniform (`m2 = covered / total_reference_facts`); non-empty = keys exactly the item's
-  reference fact ids, values sum to 1.0, `m2 = sum of weights of covered reference
-  facts`. Weights
+- `weights` are per-reference-fact recall weights and affect
+  **covered_to_total_reference_facts_ratio only**: empty `{}` = uniform
+  (`covered_to_total_reference_facts_ratio = covered / total_reference_facts`);
+  non-empty = keys exactly the item's reference fact ids, values sum to 1.0,
+  `covered_to_total_reference_facts_ratio = sum of weights of covered reference facts`.
+  Weights
   never apply to precision — output facts have no stable identity across runs.
   Full contract: references/golden-set-schema.md.
 - `input.snapshot` is mandatory — no live Jira/Confluence fetches; live inputs make
@@ -161,6 +170,9 @@ Item:
 
 ## 6. Orchestrator flow (SKILL.md)
 
+0. `check_canary.py` — run the matching runtime agent over frozen judge inputs and
+   synthetic extractor raw outputs. Overall, per-judge, non-borderline, and
+   extractor agreement gates must all pass.
 1. `validate_golden.py` — fail fast: item schema, snapshot + reference_facts present,
    unique ids, weights sum to 1.0. Prints set hash.
 2. Generation: per item × N iterations — subagent with ONLY the target skill and the
@@ -168,10 +180,12 @@ Item:
    Output → `eval-runs/{ts}-{target}/runs/{item}/{i}.md`.
 3. Extraction, then both judges in parallel per output.
 4. `aggregate.py`:
-   - m1 = supported / total_output_facts; m2 = covered / total_reference_facts (per run)
-   - verdict = mean(m1) >= min_supported_to_total_output_facts_ratio AND mean(m2) >= min_covered_to_total_reference_facts_ratio
-   - reports stddev of both metrics (stability is report-only for now; may become a
-     third gate later via manifest)
+   - `supported_to_total_output_facts_ratio = supported / total_output_facts`;
+     `covered_to_total_reference_facts_ratio = covered / total_reference_facts` (per run)
+   - verdict = `mean(supported_to_total_output_facts_ratio) >= min_supported_to_total_output_facts_ratio`
+     AND `mean(covered_to_total_reference_facts_ratio) >= min_covered_to_total_reference_facts_ratio`
+   - reports all-run dispersion plus per-item iteration stddev (the latter is
+     the actual stability signal; report-only for now)
    - diagnostics: fact count, verbosity ratio (extracted/golden) — anti-Goodhart
      signal (recall doesn't punish verbosity; precision punishes length mechanically)
    - extraction sanity check (see §4)
@@ -179,14 +193,15 @@ Item:
      (500 subagent calls WILL have partial failures; no full reruns)
    - exit code = gate
 5. Report: results.json + report.md with per-item × per-metric breakdown and
-   evidence for worst verdicts (failure clustering for free).
+   the first 20 unsupported/missing evidence rows; verdict artifacts retain
+   the complete set.
 
 Run artifacts (`eval-runs/`, gitignored):
 ```
 eval-runs/{timestamp}-{target}/
 ├── runs/{item}/{i}.md
 ├── facts/{item}/{i}.json
-├── verdicts/{item}/{i}-m1.json, {i}-m2.json
+├── verdicts/{item}/{i}-supported-output-facts.json, {i}-expected-output-facts.json
 ├── results.json          # numbers, verdict, set hash, model id
 └── report.md
 ```
@@ -201,13 +216,15 @@ Full traceability: every number resolves to a raw output + evidence without reru
 2. **Goodhart via metric asymmetry**: recall rewards fact-dumping; precision penalizes
    length. Report verbosity ratio as diagnostic even without a gate.
 3. **Model drift breaks trends**: record model id in results.json. Maintain a
-   **canary set**: 10–15 frozen judge inputs (reference facts + output facts) with
-   hand-labeled expected verdicts, including deliberately borderline cases. Facts
-   are frozen (not raw outputs): extraction is nondeterministic, so expected
-   verdicts can only be pinned to a frozen fact set — the extractor is calibrated
-   via meta-eval (§7.8) instead. Contract: references/canary-schema.md, checker:
-   check_canary.py. Run before every eval; canary divergence = invalid run, fix
-   the rubric, not the skill. This is the judges' regression test.
+   **canary set** with 10–15 frozen judge inputs plus a small extractor suite.
+   Judge items use hand-labeled verdicts and include deliberately borderline
+   cases. Extractor items compare exact fact count/id/type plus tolerant
+   `must_contain`/`must_not_contain` content anchors; they do not require exact
+   paraphrase wording. Overall, each judge, non-borderline cases, and extractor cases have
+   separate gates so stable groups cannot hide a regression elsewhere. Contract:
+   references/canary-schema.md, checker: check_canary.py. Run before every eval;
+   divergence = invalid run. Monthly sampled meta-eval (§7.8) still checks broader
+   extractor/judge quality beyond the synthetic regression cases.
 4. **Borderline "supported" semantics** (paraphrase, granularity mismatch, partial
    overlap): calibrated via borderline canary examples, not longer instructions.
 5. **Premature blocking CI gate**: order is baseline run → derive min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio from baseline
@@ -230,8 +247,10 @@ Full traceability: every number resolves to a raw output + evidence without reru
 3. **Wiki lint** (every PR, seconds, non-blocking): `scripts/wiki/lint.py` via
    step-level `continue-on-error: true` — visible in the job log, never fails
    the check or blocks a merge.
-4. **Canary eval** (workflow_dispatch + weekly, NOT per-PR — cost): claude -p with
-   ANTHROPIC_API_KEY secret, report-only artifact.
+4. **Canary eval** is mandatory inside every `/aissert:eval`. A standalone
+   `workflow_dispatch`/weekly workflow remains roadmap work because it needs API
+   credentials and a headless runtime-agent dispatcher; do not claim scheduled
+   coverage until that workflow exists.
 
 ## 9. Data boundary (hard rule)
 
@@ -255,7 +274,8 @@ see knowledge/domains/golden-and-canary.md).
    logic + pytest. Cheapest to fix while nothing depends on them.
 2. Plugin scaffold: manifests, empty agents with frontmatter, SKILL.md skeleton,
    schema-lint CI. Local dev loop: add repo dir as a local marketplace, reinstall to
-   iterate.
+   iterate. The synthetic `golden/example` target skill is bundled so this loop can
+   be exercised without installing another plugin.
 3. Agent prompts (extractor + 2 judges) with anchored examples; synthetic
    golden/example set.
 4. Pilot on 5–10 items; **calibration**: compare judge verdicts to hand labels; bad

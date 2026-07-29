@@ -22,7 +22,7 @@ related_pages:
   - ../index.md
   - ../domains/eval-pipeline.md
   - build-test-and-ci.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 ```
@@ -38,20 +38,25 @@ aissert/
 │   ├── fact-extractor.md
 │   ├── judge-supported-output-facts.md
 │   └── judge-expected-output-facts.md
-├── skills/aissert/
-│   ├── SKILL.md                # orchestrator: dispatch only, never evaluates
-│   ├── references/             # JSON contracts — single source of truth for formats
-│   │   ├── golden-set-schema.md
-│   │   ├── results-schema.md
-│   │   └── canary-schema.md
-│   └── scripts/                 # all deterministic logic
-│       ├── validate_golden.py
-│       ├── run_target.py        # CI-only headless `claude -p` runner
-│       ├── aggregate.py         # math, verdict, results.json — see hotspots/aggregate-py.md
-│       └── check_canary.py      # judge regression check
+├── skills/
+│   ├── aissert/
+│   │   ├── SKILL.md             # orchestrator: dispatch only, never evaluates
+│   │   ├── references/          # JSON contracts — single source of truth for formats
+│   │   │   ├── golden-set-schema.md
+│   │   │   ├── results-schema.md
+│   │   │   └── canary-schema.md
+│   │   └── scripts/             # all deterministic logic
+│   │       ├── validate_golden.py
+│   │       ├── run_target.py     # CI-only headless `claude -p` runner
+│   │       ├── aggregate.py      # math, verdict, results.json — see hotspots/aggregate-py.md
+│   │       └── check_canary.py   # strict grouped runtime-agent regression check
+│   └── example-bug-summarizer/
+│       └── SKILL.md              # stable synthetic target for golden/example
 ├── commands/eval.md             # thin slash-command wrapper over SKILL.md
-├── golden/example/               # synthetic demo set, doubles as CI fixture
-├── canary/                       # judge regression set — tests judges, NOT the skill
+├── golden/example/               # synthetic demo set + local-run README
+├── canary/                       # runtime-agent regression set — never tests the target skill
+│   ├── items/                    # frozen precision/recall judge inputs
+│   └── extractor-items/          # synthetic raw outputs + tolerant fact anchors
 ├── knowledge/                     # this wiki
 ├── scripts/
 │   ├── claude/                    # deterministic hook scripts used by .claude/settings.json
@@ -84,6 +89,9 @@ alone isn't sufficient and a path fully outside the repo is the safer default.
 2. `skills/aissert/SKILL.md` — the actual orchestration runbook.
 3. `agents/*.md` — what each subagent does and doesn't see.
 4. `skills/aissert/references/*.md` — the JSON contracts everything obeys.
+
+For a self-contained local run, `golden/example/README.md` ties the example
+manifest to the bundled `skills/example-bug-summarizer/` target.
 
 Deeper dives: [eval-pipeline.md](../domains/eval-pipeline.md) (data flow),
 [golden-and-canary.md](../domains/golden-and-canary.md) (test data layers),

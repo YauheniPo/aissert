@@ -25,13 +25,13 @@ before opening raw code, given your changed files.
 ## Domains
 
 - [Eval pipeline](domains/eval-pipeline.md) — core idea, data flow, agents, orchestrator.
-- [Golden sets & canary](domains/golden-and-canary.md) — two different test layers, easy to conflate.
+- [Golden sets & canary](domains/golden-and-canary.md) — skill evaluation versus regression checks for the three runtime evaluation agents.
 - [Change playbooks](domains/change-playbooks.md) — what to re-verify for each type of change, before you update anything.
 
 ## Hotspots
 
 - [aggregate.py](hotspots/aggregate-py.md) — the single source of every number in this repo.
-- [Judges & canary review](hotspots/judges-and-canary.md) — judge calibration, the `reviewed: false` gate, model-pin risk.
+- [Judges & canary review](hotspots/judges-and-canary.md) — grouped calibration gates, extractor cases, the `reviewed: false` gate, and model-pin risk.
 
 ## Meta
 

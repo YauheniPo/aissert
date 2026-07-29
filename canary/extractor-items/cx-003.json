@@ -1,0 +1,12 @@
+{
+  "id": "cx-003",
+  "reviewed": true,
+  "source": {
+    "note": "Synthetic packaging-only output; extractor must return no facts"
+  },
+  "raw_output": "# Result\nHello!\n\n## Notes\nThank you.",
+  "expected": {
+    "facts": [],
+    "must_not_contain": []
+  }
+}

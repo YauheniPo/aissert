@@ -1,0 +1,28 @@
+{
+  "id": "cx-001",
+  "reviewed": true,
+  "source": {
+    "note": "Synthetic compound-step and qualifier regression case"
+  },
+  "raw_output": "Tap 'Forgot password', enter the account email, and verify that a reset link arrives within 60 seconds.",
+  "expected": {
+    "facts": [
+      {
+        "id": "f1",
+        "type": "action",
+        "must_contain": ["Forgot password"]
+      },
+      {
+        "id": "f2",
+        "type": "action",
+        "must_contain": ["account email"]
+      },
+      {
+        "id": "f3",
+        "type": "expectation",
+        "must_contain": ["reset link", "60 seconds"]
+      }
+    ],
+    "must_not_contain": []
+  }
+}

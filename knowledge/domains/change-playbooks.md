@@ -15,7 +15,7 @@ related_pages:
   - eval-pipeline.md
   - ../hotspots/aggregate-py.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: 6a43e361b0b3e72ce833b6592e96ac86feb170c6
+last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
 ---
 
 Baseline for any PR, always:
@@ -31,10 +31,12 @@ Then, by change type:
 
 1. `pytest tests/test_plugin_schema.py -q` — frontmatter (`tools: []`,
    `model:` pin) unchanged.
-2. Run canary: orchestrator reruns judges on `canary/items/*.json`, then
+2. Run canary: orchestrator reruns judges on `canary/items/*.json` and
+   fact-extractor on `canary/extractor-items/*.json`, then
    `check_canary.py --canary-set canary --verdicts-dir <output>`. If canary
-   fails (exit 1) and you **intended** to change judge behavior: expected —
-   manually re-review `expected` in the affected canary items, update them.
+   fails (exit 1) and you **intended** to change behavior: manually re-review
+   only the affected group and its frozen cases. Never relax recall,
+   non-borderline, or extractor gates to absorb precision-borderline noise.
    If it fails and you didn't touch the rubric on purpose: regression, revert.
 3. `--smoke` run on `golden/example`, read `results.json` — metrics shouldn't
    move without a reason you can explain.
@@ -84,6 +86,7 @@ every historical metric trend (DESIGN.md §3). Order matters:
 ## Before merge — what CI actually gates
 
 Only `pytest tests/test_plugin_schema.py -q` and `pytest tests/ -q`, per PR.
-**Canary eval and baseline runs are never run per-PR** (real API cost,
-`workflow_dispatch` + weekly only). If your change needed canary
-verification above, you had to do it yourself — CI will not save you here.
+**Live canary and baseline runs are never run per-PR** because they cost API
+calls. There is currently no standalone scheduled canary workflow in this
+repository; the mandatory canary runs as step 0 of `/aissert:eval`. If your
+change needs an earlier live confirmation, run it yourself.
