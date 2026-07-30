@@ -38,6 +38,6 @@ claude plugin list 2>/dev/null | grep -i aissert || true
 
 echo
 echo "Done. Launching a new Claude Code session in $REPO_ROOT ..."
-echo "Try: /aissert:eval golden_set=golden/example --smoke"
+echo "Try: /aissert:smoke golden_set=golden/example"
 cd "$REPO_ROOT"
 exec claude

@@ -6,6 +6,8 @@ This project uses conventional commits and automated GitHub Releases.
 
 ### Added
 
+- Dedicated `/aissert:smoke` command for the fixed 3-item × 2-iteration fast
+  evaluation path; `/aissert:eval` now represents full evaluations only.
 - One-command local plugin refresh: `scripts/claude/reinstall_plugin.sh` runs
   the plugin schema check, force-reinstalls the directory-source plugin
   (`/plugin update` is version-gated and never re-copies an unchanged-version

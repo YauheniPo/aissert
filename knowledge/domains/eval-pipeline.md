@@ -9,6 +9,7 @@ source_paths:
   - agents/judge-expected-output-facts.md
   - skills/aissert/SKILL.md
   - commands/eval.md
+  - commands/smoke.md
   - skills/aissert/references/results-schema.md
 related_pages:
   - ../index.md
@@ -93,5 +94,7 @@ splitting/deduplication without exposing it to golden facts. Canary pass/fail
 is computed in Python with separate precision, recall, non-borderline, and
 extractor gates.
 
-`commands/eval.md` is a thin wrapper passing `$ARGUMENTS` through; touch it
-only if the slash-command signature itself changes.
+`commands/eval.md` passes full-eval arguments through unchanged.
+`commands/smoke.md` is the separate fast entry point: it supplies the internal
+`--smoke` marker, fixing the matrix at 3 items × 2 iterations. Touch these
+wrappers only when their slash-command signatures change.

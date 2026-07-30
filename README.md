@@ -61,10 +61,10 @@ Install the plugin in Claude Code:
 /plugin install aissert@aissert
 ```
 
-Run the bundled skill against the synthetic example set:
+Run a smoke evaluation of the bundled skill against the synthetic example set:
 
 ```
-/aissert:eval golden_set=golden/example --smoke
+/aissert:smoke golden_set=golden/example
 ```
 
 The example manifest selects the included `example-bug-summarizer` skill, so
@@ -135,7 +135,7 @@ the marketplace install above.
 
 ```
 /aissert:eval golden_set=golden/example iterations=3
-/aissert:eval golden_set=golden/example --smoke   # 3 items x 2 iterations
+/aissert:smoke golden_set=golden/example          # 3 items x 2 iterations
 ```
 
 `target_skill` is optional: if omitted, the skill to evaluate comes from the

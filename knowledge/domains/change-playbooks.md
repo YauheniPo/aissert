@@ -38,8 +38,8 @@ Then, by change type:
    only the affected group and its frozen cases. Never relax recall,
    non-borderline, or extractor gates to absorb precision-borderline noise.
    If it fails and you didn't touch the rubric on purpose: regression, revert.
-3. `--smoke` run on `golden/example`, read `results.json` — metrics shouldn't
-   move without a reason you can explain.
+3. Run `/aissert:smoke golden_set=golden/example`, read `results.json` —
+   metrics shouldn't move without a reason you can explain.
 
 ## Math / contract (`aggregate.py`, `results-schema.md`)
 

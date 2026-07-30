@@ -36,6 +36,7 @@ SIGNIFICANT_ANCHORS = [
     ".claude-plugin/marketplace.json",
     "skills/aissert/SKILL.md",
     "commands/eval.md",
+    "commands/smoke.md",
     "golden/example/manifest.json",
     "canary/manifest.json",
 ]
@@ -105,7 +106,11 @@ READ_PLAN_RULES = [
         ],
     },
     {
-        "patterns": ["skills/aissert/SKILL.md", "commands/eval.md"],
+        "patterns": [
+            "skills/aissert/SKILL.md",
+            "commands/eval.md",
+            "commands/smoke.md",
+        ],
         "pages": ["knowledge/domains/eval-pipeline.md"],
     },
     {

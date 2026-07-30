@@ -14,7 +14,7 @@ related_pages:
   - ../domains/golden-and-canary.md
   - ../domains/change-playbooks.md
   - ../status.md
-last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
+last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
 ---
 
 ## Hand review: done 2026-07-21, extended 2026-07-28

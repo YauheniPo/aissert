@@ -54,7 +54,13 @@ hallucination clusters; `missing` facts = coverage-gap map — both with evidenc
   iterations: N          # runs of target skill per dataset item
   min_supported_to_total_output_facts_ratio: 0.80    # min mean precision across iterations
   min_covered_to_total_reference_facts_ratio: 0.70       # min mean recall across iterations
---smoke                  # 3 items x 2 iterations, for fast checks after skill edits
+
+/aissert:smoke
+  golden_set: <path to dataset dir>
+  target_skill: <skill to evaluate>   # optional, defaults to the manifest's target_skill
+  min_supported_to_total_output_facts_ratio: 0.80
+  min_covered_to_total_reference_facts_ratio: 0.70
+  # fixed at 3 items x 2 iterations
 ```
 
 Defaults for min_supported_to_total_output_facts_ratio/min_covered_to_total_reference_facts_ratio live in the golden set's `manifest.json`;
@@ -87,7 +93,8 @@ aissert/
 │   └── example-bug-summarizer/
 │       └── SKILL.md               # bundled synthetic target for local evals
 ├── commands/
-│   └── eval.md                    # thin slash-command wrapper over the skill
+│   ├── eval.md                    # full-eval slash-command wrapper
+│   └── smoke.md                   # fixed 3-item × 2-iteration wrapper
 ├── golden/
 │   └── example/                   # SYNTHETIC demo set only (doubles as CI fixture)
 ├── canary/                        # runtime-agent regression set (references/canary-schema.md)
