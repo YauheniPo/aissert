@@ -24,7 +24,7 @@ claude --plugin-dir .
 Then run:
 
 ```text
-/aissert:eval golden_set=golden/example --smoke
+/aissert:smoke golden_set=golden/example
 ```
 
 `target_skill` may be omitted because the manifest already names

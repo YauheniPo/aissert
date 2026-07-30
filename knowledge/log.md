@@ -3,6 +3,18 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-07-29
+
+- Split the user-facing eval entry points: `/aissert:eval` now accepts only
+  full-eval arguments, while the new `/aissert:smoke` command supplies the
+  internal `--smoke` marker and fixes the run at 3 items × 2 iterations.
+  Updated command schema tests, local-run instructions, design docs, wiki
+  source mappings, and the reinstall helper's suggested command.
+- Revalidated the six pages flagged stale by the previous committed
+  schema/canary/reporting change plus this pass's wiki config update; their
+  documented contracts still match the current sources, so re-anchored them
+  to commit `67069de36bdb491e51409fbecb8cd9ee2b86068a`.
+
 ## 2026-07-28 (3)
 
 - Replaced the opaque eval metric names `m1`/`m2` with the already-established

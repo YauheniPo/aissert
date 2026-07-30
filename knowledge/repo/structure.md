@@ -52,7 +52,9 @@ aissert/
 │   │       └── check_canary.py   # strict grouped runtime-agent regression check
 │   └── example-bug-summarizer/
 │       └── SKILL.md              # stable synthetic target for golden/example
-├── commands/eval.md             # thin slash-command wrapper over SKILL.md
+├── commands/
+│   ├── eval.md                  # full-eval wrapper over SKILL.md
+│   └── smoke.md                 # fixed 3-item × 2-iteration wrapper
 ├── golden/example/               # synthetic demo set + local-run README
 ├── canary/                       # runtime-agent regression set — never tests the target skill
 │   ├── items/                    # frozen precision/recall judge inputs

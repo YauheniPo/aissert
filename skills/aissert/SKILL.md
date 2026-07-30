@@ -26,7 +26,8 @@ score, or judge anything yourself. All numbers and the verdict come from
 - `iterations` — runs of the target skill per dataset item
 - `min_supported_to_total_output_facts_ratio`, `min_covered_to_total_reference_facts_ratio` — optional gate overrides; defaults come from
   the set's manifest.json
-- `--smoke` — 3 items × 2 iterations, for fast checks after skill edits
+- smoke mode — 3 items × 2 iterations, selected by the `/aissert:smoke`
+  command (the wrapper supplies the internal `--smoke` marker)
 
 ## Hard rules (all steps)
 

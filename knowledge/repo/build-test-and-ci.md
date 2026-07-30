@@ -55,7 +55,7 @@ Documented in README.md's "Install (for users)" section.
 Run:
 ```
 /aissert:eval golden_set=golden/example iterations=3
-/aissert:eval golden_set=golden/example --smoke   # 3 items x 2 iterations
+/aissert:smoke golden_set=golden/example          # 3 items x 2 iterations
 ```
 
 The example manifest selects the bundled `example-bug-summarizer`, so this

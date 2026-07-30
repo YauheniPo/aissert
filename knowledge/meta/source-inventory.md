@@ -35,7 +35,7 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `.claude-plugin/` | [repo/structure.md](../repo/structure.md) |
 | `agents/fact-extractor.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `agents/judge-supported-output-facts.md`, `agents/judge-expected-output-facts.md` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
-| `skills/aissert/SKILL.md`, `commands/eval.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
+| `skills/aissert/SKILL.md`, `commands/eval.md`, `commands/smoke.md` | [domains/eval-pipeline.md](../domains/eval-pipeline.md) |
 | `skills/example-bug-summarizer/` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `skills/aissert/scripts/aggregate.py`, `validate_golden.py` | [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
 | `skills/aissert/scripts/check_canary.py` | [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |

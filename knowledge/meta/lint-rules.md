@@ -10,7 +10,7 @@ related_pages:
   - ../index.md
   - page-template.md
   - source-inventory.md
-last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
+last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
 ---
 
 `python3 scripts/wiki/lint.py` exits 0 only if all of these are empty. Every

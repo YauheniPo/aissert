@@ -115,10 +115,27 @@ def test_golden_target_skills_are_packaged():
         assert parse_frontmatter(skill_path)["name"] == target_skill
 
 
-def test_command_frontmatter():
-    fm = parse_frontmatter(REPO / "commands" / "eval.md")
+@pytest.mark.parametrize("command_name", ["eval", "smoke"])
+def test_command_frontmatter(command_name):
+    fm = parse_frontmatter(REPO / "commands" / f"{command_name}.md")
     assert fm["description"].strip()
     assert fm["argument-hint"].strip()
+
+
+def test_eval_and_smoke_commands_have_distinct_entry_points():
+    eval_text = (REPO / "commands" / "eval.md").read_text(encoding="utf-8")
+    smoke_text = (REPO / "commands" / "smoke.md").read_text(encoding="utf-8")
+
+    assert "$ARGUMENTS" in eval_text
+    assert "$ARGUMENTS" in smoke_text
+    assert "--smoke" not in eval_text
+    assert "--smoke" in smoke_text
+    assert "iterations=N" in parse_frontmatter(REPO / "commands" / "eval.md")[
+        "argument-hint"
+    ]
+    assert "iterations=N" not in parse_frontmatter(
+        REPO / "commands" / "smoke.md"
+    )["argument-hint"]
 
 
 def test_contracts_exist():
