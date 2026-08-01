@@ -58,7 +58,7 @@
 - `scripts/build_plugin_zip.py` — packaging/allowlist
 - `.claude-plugin/plugin.json` & `.claude-plugin/marketplace.json` — versions must match
 - `DESIGN.md` — source of truth for architecture
-- `CLAUDE.md` — hard rules for agents working in this repo
+- `PROJECT_RULES.md` — shared hard rules for agents working in this repo
 
 ## Contact & Questions
 

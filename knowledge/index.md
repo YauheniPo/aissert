@@ -5,7 +5,8 @@ sync by `scripts/wiki/*.py` and a SessionStart hook. It exists to help an LLM
 (or a middle-level engineer) find the right 1-2 files fast instead of
 re-reading the whole tree every session.
 
-**Not a replacement for raw source.** `DESIGN.md`, `CLAUDE.md`, agent
+**Not a replacement for raw source.** `DESIGN.md`, `PROJECT_RULES.md`,
+`AGENTS.md`/`CLAUDE.md`, agent
 prompts, scripts, and the JSON contracts in `skills/aissert/references/`
 remain authoritative. If a wiki page and the raw files disagree, the raw
 files win — fix the page, don't trust it over the source.
@@ -20,7 +21,7 @@ before opening raw code, given your changed files.
 ## Repo
 
 - [Repo structure](repo/structure.md) — directory layout, file-by-file map.
-- [Build, test & CI](repo/build-test-and-ci.md) — local dev loop, pytest, Claude Code automation, GitHub Actions jobs.
+- [Build, test & CI](repo/build-test-and-ci.md) — local dev loop, pytest, host integrations, and GitHub Actions jobs.
 
 ## Domains
 

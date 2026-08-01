@@ -24,8 +24,12 @@ EXCLUDE_NAMES = {".DS_Store", "__pycache__"}
 EXCLUDE_SUFFIXES = {".pyc"}
 INCLUDE_PATHS = [
     ".codex-plugin",
+    "hooks",
     "agents",
+    "scripts/hooks",
     "skills/aissert/SKILL.md",
+    "skills/aissert-codex/SKILL.md",
+    "skills/aissert-workflow/SKILL.md",
     "skills/aissert/references",
     "skills/aissert/scripts/aggregate.py",
     "skills/aissert/scripts/check_canary.py",

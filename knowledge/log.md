@@ -3,6 +3,24 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-08-01
+
+- Fixed Codex ZIP runtime boundaries: added a Codex-only execution adapter so
+  evaluations reach `run_codex_eval.py`; made invariant checks package-aware;
+  and made SessionStart skip development-only wiki instructions when those
+  files are not packaged. Added archive-execution regression coverage.
+- Added `scripts/codex/reinstall_plugin.sh`, the Codex equivalent of the
+  Claude local-refresh helper. It checks the package, refreshes the local
+  cachebuster and marketplace install, then starts a new Codex session.
+- Added `PROJECT_RULES.md` as the single source of shared repository rules,
+  with `AGENTS.md` and `CLAUDE.md` as thin host-specific entry points. Moved
+  `verify` and `wiki-maintenance` procedures to neutral `project-skills/` and
+  added thin discovery adapters for both hosts. Updated structure, build/CI,
+  source-inventory, and lint-rule pages accordingly.
+- Narrowed the Claude package allowlist to actual interactive runtime files.
+  It now excludes the CI-only runner, Codex adapter, and project-policy
+  documents; a regression test protects that boundary.
+
 ## 2026-07-31
 
 - A smoke eval of `golden/example` failed precision (`0.7551` vs `0.80`) with

@@ -1,0 +1,60 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session_start.py\"",
+            "timeout": 15000,
+            "statusMessage": "Loading aissert wiki read-plan"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre_tool_guard.py\"",
+            "timeout": 5000,
+            "statusMessage": "Checking aissert guardrails"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post_tool_invariants.py\"",
+            "timeout": 5000,
+            "statusMessage": "Checking aissert invariants"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/bump_golden_version.py\"",
+            "timeout": 5000,
+            "statusMessage": "Bumping golden set version when needed"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop_verify.py\"",
+            "timeout": 120000,
+            "statusMessage": "Verifying aissert changes"
+          }
+        ]
+      }
+    ]
+  }
+}

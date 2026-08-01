@@ -244,7 +244,7 @@ def test_significant_change_none_below_threshold():
     # A single change outside every anchor/prefix/high-signal bucket
     # (tests/ isn't high-signal — only .claude/, agents/, skills/, commands/,
     # golden/, canary/, scripts/claude/, scripts/wiki/,
-    # README/DESIGN/CLAUDE.md are).
+    # README/DESIGN/project-instruction files are).
     result = lib.analyze_significant_change(
         ["tests/fixtures/example.json"],
         [],
@@ -289,6 +289,18 @@ def test_significant_change_claude_automation_anchor():
     )
     reason_types = [r["type"] for r in result["reasons"]]
     assert "architectural_anchor_changed" in reason_types
+
+
+def test_project_instruction_files_are_high_signal_and_covered_by_wiki():
+    result = lib.analyze_significant_change(
+        ["AGENTS.md"],
+        [_page(["AGENTS.md"])],
+        tracked_files=["AGENTS.md"],
+        untracked_files=[],
+    )
+    reason_types = [r["type"] for r in result["reasons"]]
+    assert "architectural_anchor_changed" in reason_types
+    assert "uncovered_high_signal_path" not in reason_types
 
 
 def test_significant_change_uncovered_high_signal_path():

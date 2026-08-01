@@ -8,13 +8,14 @@ source_paths:
   - agents/fact-extractor.md
   - canary
   - skills/aissert/references/canary-schema.md
+  - skills/aissert/scripts/run_codex_eval.py
   - tests/test_check_canary.py
 related_pages:
   - ../index.md
   - ../domains/golden-and-canary.md
   - ../domains/change-playbooks.md
   - ../status.md
-last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
+last_validated_commit: 3d3e86042a857f6b8f7023c559cca5eb4421bcb3
 ---
 
 ## Hand review: done 2026-07-21, extended 2026-07-28
@@ -34,6 +35,11 @@ live judge agents against these inputs to confirm they still agree.
 Live-agreement confirmation happens automatically at eval time (`SKILL.md`
 step 0) or can be triggered manually; do that before trusting a `results.json`
 verdict, don't assume "reviewed: true" alone means the judges currently pass.
+
+The host adapters never reinterpret those labels. The Codex adapter creates
+the required JSON artifacts through isolated workers, then invokes the same
+`check_canary.py` contract; a malformed worker artifact is a pipeline error,
+not a judge disagreement that can be relaxed.
 
 ### Findings from this review
 

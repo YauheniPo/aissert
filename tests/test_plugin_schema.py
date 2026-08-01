@@ -99,6 +99,8 @@ def test_codex_package_uses_shared_runtime_sources_only():
     include_paths = set(module.INCLUDE_PATHS)
     assert "agents" in include_paths
     assert "skills/aissert/SKILL.md" in include_paths
+    assert "skills/aissert-codex/SKILL.md" in include_paths
+    assert "skills/aissert-workflow/SKILL.md" in include_paths
     assert "skills/aissert/scripts/run_codex_eval.py" in include_paths
     assert "skills/aissert/scripts/run_target.py" not in include_paths
     assert "commands" not in include_paths
@@ -135,13 +137,25 @@ def test_extractor_prompt_has_qualified_outcome_dedup_regression_example():
     assert "do not turn the scope qualifier into a second fact" in prompt
 
 
-def test_skill_requires_codex_parent_to_persist_runtime_artifacts():
-    skill = (REPO / "skills" / "aissert" / "SKILL.md").read_text(encoding="utf-8")
-    normalized_skill = " ".join(skill.split())
-    assert "## Codex execution adapter" in skill
-    assert "run_codex_eval.py" in skill
-    assert "A child response is not an artifact until the parent has saved it." in normalized_skill
-    assert "before running either `check_canary.py` or `aggregate.py`" in normalized_skill
+def test_shared_skills_are_platform_neutral():
+    for path in (REPO / "skills" / "aissert" / "SKILL.md", REPO / "skills" / "aissert-workflow" / "SKILL.md"):
+        skill = path.read_text(encoding="utf-8")
+        assert "Claude" not in skill
+        assert "Codex" not in skill
+
+
+def test_codex_execution_adapter_reaches_the_isolated_runner():
+    adapter = (REPO / "skills" / "aissert-codex" / "SKILL.md").read_text(encoding="utf-8")
+    assert "run_codex_eval.py" in adapter
+    assert "isolated `codex exec` workers" in adapter
+    assert "--smoke" in adapter
+
+
+def test_platform_specific_execution_rules_live_outside_shared_skills():
+    commands = "\n".join((REPO / "commands" / name).read_text(encoding="utf-8") for name in ("eval.md", "smoke.md"))
+    runner = (REPO / "skills" / "aissert" / "scripts" / "run_codex_eval.py").read_text(encoding="utf-8")
+    assert "Claude Code agents" in commands
+    assert "Codex CLI" in runner
 
 
 def test_codex_runner_requires_modern_python_for_strict_contract_validation():
@@ -161,7 +175,7 @@ def test_example_bug_summarizer_keeps_failed_mitigations_and_avoids_inference():
 # ---------------------------------------------------------- skill, command
 
 
-@pytest.mark.parametrize("skill_name", ["aissert", "example-bug-summarizer"])
+@pytest.mark.parametrize("skill_name", ["aissert", "aissert-codex", "aissert-workflow", "example-bug-summarizer"])
 def test_skill_frontmatter(skill_name):
     fm = parse_frontmatter(REPO / "skills" / skill_name / "SKILL.md")
     assert fm["name"] == skill_name

@@ -8,6 +8,7 @@ source_paths:
   - agents/judge-supported-output-facts.md
   - agents/judge-expected-output-facts.md
   - skills/aissert/SKILL.md
+  - skills/aissert-workflow/SKILL.md
   - commands/eval.md
   - commands/smoke.md
   - skills/aissert/references/results-schema.md
@@ -78,7 +79,7 @@ rubric + anchored right/wrong examples. If a judge systematically misjudges a
 class of cases, fix the rubric/examples in `agents/judge-*.md` — never a
 threshold in `manifest.json`.
 
-## Orchestrator (`skills/aissert/SKILL.md`)
+## Orchestrator (`skills/aissert-workflow/SKILL.md`)
 
 Single place that knows the whole flow. Hard discipline: it dispatches
 subagents and scripts, it **never evaluates anything itself** — every number
@@ -98,3 +99,8 @@ extractor gates.
 `commands/smoke.md` is the separate fast entry point: it supplies the internal
 `--smoke` marker, fixing the matrix at 3 items × 2 iterations. Touch these
 wrappers only when their slash-command signatures change.
+
+`skills/aissert/SKILL.md` and `skills/aissert-workflow/SKILL.md` contain no
+host-specific rules. Claude Code agent selection stays in `commands/*.md`; the
+Codex-only `skills/aissert-codex/SKILL.md` invokes `run_codex_eval.py` and owns
+its isolated-worker rules.

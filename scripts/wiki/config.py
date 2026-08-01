@@ -32,9 +32,14 @@ VALID_KINDS = {"repo", "domain", "hotspot", "query", "meta"}
 SIGNIFICANT_ANCHORS = [
     "DESIGN.md",
     "CLAUDE.md",
+    "AGENTS.md",
+    "PROJECT_RULES.md",
     ".claude-plugin/plugin.json",
     ".claude-plugin/marketplace.json",
+    ".codex-plugin/plugin.json",
+    "hooks/hooks.codex.json",
     "skills/aissert/SKILL.md",
+    "skills/aissert-workflow/SKILL.md",
     "commands/eval.md",
     "commands/smoke.md",
     "golden/example/manifest.json",
@@ -45,8 +50,13 @@ SIGNIFICANT_ANCHORS = [
 # behavior, deterministic math, and the JSON contracts everything else obeys.
 SIGNIFICANT_PREFIXES = [
     ".claude/",
+    ".codex/",
     "agents/",
+    "project-skills/",
     "scripts/claude/",
+    "scripts/codex/",
+    "scripts/hooks/",
+    "hooks/",
     "skills/aissert/scripts/",
     "skills/aissert/references/",
 ]
@@ -67,7 +77,7 @@ READ_PLAN_RULES = [
         ],
     },
     {
-        "patterns": ["CLAUDE.md"],
+        "patterns": ["CLAUDE.md", "AGENTS.md", "PROJECT_RULES.md", "project-skills/", ".codex/"],
         "pages": ["knowledge/meta/lint-rules.md"],
     },
     {
@@ -108,6 +118,7 @@ READ_PLAN_RULES = [
     {
         "patterns": [
             "skills/aissert/SKILL.md",
+            "skills/aissert-workflow/SKILL.md",
             "commands/eval.md",
             "commands/smoke.md",
         ],
@@ -125,7 +136,16 @@ READ_PLAN_RULES = [
         ],
     },
     {
-        "patterns": ["tests/", ".github/workflows/", ".claude/", "scripts/claude/"],
+        "patterns": [
+            "tests/",
+            ".github/workflows/",
+            ".claude/",
+            "scripts/claude/",
+            "scripts/codex/",
+            ".codex-plugin/",
+            "hooks/",
+            "scripts/hooks/",
+        ],
         "pages": ["knowledge/repo/build-test-and-ci.md"],
     },
     {

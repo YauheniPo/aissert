@@ -1,6 +1,6 @@
 {
   "name": "aissert",
-  "version": "0.11.1+codex.20260801084751",
+  "version": "0.11.1+codex.20260801091829",
   "description": "LLM-as-judge evaluation harness for agent skills with fact-level verdicts and deterministic Python gates.",
   "author": {
     "name": "Yauheni Papovich",
@@ -16,6 +16,7 @@
     "testing"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks/hooks.codex.json",
   "interface": {
     "displayName": "aissert",
     "shortDescription": "Evaluate agent skills with fact-level deterministic gates.",

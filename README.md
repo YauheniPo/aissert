@@ -41,7 +41,7 @@ Full rationale and architecture: [DESIGN.md](DESIGN.md).
 - Deterministic Python gates, hashes, exit codes, and resumable artifacts.
 - Isolated judge agents with no tools, plus canary checks for judge drift.
 - Synthetic fixtures in the public repo; real golden sets stay outside the repo.
-- Packaged as a Claude Code plugin with local dev, snapshot, and release flows.
+- Packaged as Claude Code and Codex plugins with local dev, snapshot, and release flows.
 
 ## Quickstart
 
@@ -165,23 +165,33 @@ nothing to reinstall. Doesn't work for Claude Desktop, which has no
 `--plugin-dir` flag; Desktop needs the packaged zip (see Packaging below) or
 the marketplace install above.
 
-For an installed local Codex plugin, refresh the cache after changing a skill
-or agent, then start a fresh Codex session:
+For an installed local Codex plugin, use the one-command refresh from a plain
+terminal after changing a skill, agent, or hook:
 
 ```
-python3 /path/to/codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py /path/to/aissert
-codex plugin add aissert@aissert
+scripts/codex/reinstall_plugin.sh
 ```
 
-The temporary `+codex.<timestamp>` suffix is a local cachebuster only. Release
-automation rewrites the Codex manifest to the same plain version as the Claude
-plugin before publishing.
+It validates the Codex package, ensures the local marketplace is registered,
+updates the temporary `+codex.<timestamp>` cachebuster, reinstalls the plugin,
+and opens a fresh Codex session. Run it outside an existing sandboxed Codex
+turn because that turn cannot update the Codex plugin cache. It uses
+`.venv/bin/python` when present (otherwise `python3`); override it with
+`AISSERT_PYTHON=/path/to/python` if necessary. Release automation rewrites the
+local suffix to the same plain version as the Claude plugin before publishing.
 
-Codex runs use `skills/aissert/scripts/run_codex_eval.py` internally. It starts
-isolated headless `codex exec` workers, writes their artifacts itself, and then
-runs the same canary and aggregation scripts as Claude Code. This avoids relying
-on a named-agent feature that Codex CLI does not provide. Run it with Python
-3.12 (for example `.venv/bin/python`), not macOS's legacy system `python3`.
+Codex runs use the Codex-only `aissert-codex` adapter, which invokes
+`skills/aissert/scripts/run_codex_eval.py`. It starts isolated headless
+`codex exec` workers, writes their artifacts itself, and then runs the same
+canary and aggregation scripts as Claude Code. This avoids relying on a
+named-agent feature that Codex CLI does not provide. Run it with Python 3.12
+(for example `.venv/bin/python`), not macOS's legacy system `python3`.
+
+The Codex plugin also registers `SessionStart`, `PreToolUse`, `PostToolUse`,
+and `Stop` hooks. They use the same host-neutral enforcement scripts as the
+Claude integration: wiki context, direct-`main` push/data guards, invariant
+checks plus golden-set versioning, and proportional verification. The host
+configuration files are deliberately separate; the rule implementation is not.
 
 ## Usage
 
@@ -304,6 +314,21 @@ GitHub comments can trigger Claude with `@claude` via
 `ANTHROPIC_API_KEY` before using it. Managed Claude Code Review is configured
 outside workflows through the Claude GitHub app; see
 `.github/CLAUDE_CODE_REVIEW_CONFIG.md` for the intended repo settings.
+
+### Codex automation
+
+`.codex-plugin/plugin.json` loads `hooks/hooks.codex.json`. It binds the Codex
+lifecycle to `scripts/hooks/`; those scripts are included in the Codex zip and
+are tested along with the manifest. Codex-specific wiring lives only in that
+hook file, while the guardrails themselves remain a single shared source.
+
+### Project instructions
+
+`PROJECT_RULES.md` is the shared source of repository rules. `AGENTS.md`
+contains Codex-specific integration guidance and `CLAUDE.md` contains
+Claude-specific guidance; neither repeats the shared rules. The `verify` and
+`wiki-maintenance` workflows live once under `project-skills/`, with local
+discovery adapters under `.codex/skills/` and `.claude/skills/`.
 
 ## Contributing
 
