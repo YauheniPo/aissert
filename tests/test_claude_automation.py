@@ -63,23 +63,10 @@ def test_shared_verify_covers_both_packaging_surfaces_and_wiki():
     assert "scripts/wiki/lint.py" in verify
 
 
-def test_codex_plugin_wires_the_same_lifecycle_to_shared_hooks():
+def test_codex_plugin_omits_unsupported_lifecycle_hook_declaration():
     plugin = json.loads((REPO / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    assert plugin["hooks"] == "./hooks/hooks.codex.json"
-
-    config = json.loads((REPO / "hooks" / "hooks.codex.json").read_text(encoding="utf-8"))
-    hooks = config["hooks"]
-    assert {"PreToolUse", "PostToolUse", "SessionStart", "Stop"} <= set(hooks)
-
-    commands = json.dumps(hooks)
-    for script in (
-        "scripts/hooks/pre_tool_guard.py",
-        "scripts/hooks/post_tool_invariants.py",
-        "scripts/hooks/bump_golden_version.py",
-        "scripts/hooks/session_start.py",
-        "scripts/hooks/stop_verify.py",
-    ):
-        assert script in commands
+    assert "hooks" not in plugin
+    assert not (REPO / "hooks" / "hooks.codex.json").exists()
 
 
 def test_claude_entrypoints_delegate_to_shared_hook_implementations():
@@ -185,15 +172,15 @@ def test_built_claude_archive_excludes_project_and_codex_only_content(tmp_path):
     } & names
 
 
-def test_codex_package_contains_its_hook_configuration_and_shared_scripts():
+def test_codex_package_contains_only_supported_runtime_content():
     build_zip = load_module("scripts/build_codex_plugin_zip.py")
     include_paths = set(build_zip.INCLUDE_PATHS)
-    assert "hooks" in include_paths
-    assert "scripts/hooks" in include_paths
+    assert "hooks" not in include_paths
+    assert "scripts/hooks" not in include_paths
     assert "skills/aissert-codex/SKILL.md" in include_paths
 
 
-def test_built_codex_archive_hooks_run_without_project_only_files(tmp_path):
+def test_built_codex_archive_excludes_unsupported_hooks_and_project_files(tmp_path):
     build_zip = load_module("scripts/build_codex_plugin_zip.py")
     archive_path = tmp_path / "aissert-codex.zip"
     assert build_zip.main(["--output", str(archive_path)]) == 0
@@ -203,29 +190,10 @@ def test_built_codex_archive_hooks_run_without_project_only_files(tmp_path):
 
     plugin_root = tmp_path / "plugin"
     assert not (plugin_root / ".claude-plugin").exists()
+    assert not (plugin_root / "hooks").exists()
+    assert not (plugin_root / "scripts" / "hooks").exists()
     assert not (plugin_root / "scripts" / "wiki").exists()
     assert not (plugin_root / "knowledge").exists()
-
-    invariant = subprocess.run(
-        ["python3", str(plugin_root / "scripts" / "hooks" / "post_tool_invariants.py")],
-        cwd=plugin_root,
-        input=json.dumps({"tool_name": "Edit"}),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert invariant.returncode == 0, invariant.stderr
-
-    session_start = subprocess.run(
-        ["python3", str(plugin_root / "scripts" / "hooks" / "session_start.py")],
-        cwd=plugin_root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert session_start.returncode == 0, session_start.stderr
-    context = json.loads(session_start.stdout)["hookSpecificOutput"]["additionalContext"]
-    assert context == "[aissert] Plugin runtime loaded."
 
 
 def test_codex_reinstall_helper_refreshes_cache_and_starts_a_fresh_session(tmp_path):

@@ -186,6 +186,10 @@ Codex runs use the Codex-only `aissert-codex` adapter, which invokes
 canary and aggregation scripts as Claude Code. This avoids relying on a
 named-agent feature that Codex CLI does not provide. Run it with Python 3.12
 (for example `.venv/bin/python`), not macOS's legacy system `python3`.
+For an external target skill, pass its source explicitly as
+`--target-skill-file /path/to/SKILL.md`; the runner embeds the source in each
+isolated worker. It also accepts both gate overrides and `--model-id`, which
+is recorded in `results.json`.
 
 The Codex plugin also registers `SessionStart`, `PreToolUse`, `PostToolUse`,
 and `Stop` hooks. They use the same host-neutral enforcement scripts as the
@@ -315,12 +319,14 @@ GitHub comments can trigger Claude with `@claude` via
 outside workflows through the Claude GitHub app; see
 `.github/CLAUDE_CODE_REVIEW_CONFIG.md` for the intended repo settings.
 
-### Codex automation
+### Codex runtime
 
-`.codex-plugin/plugin.json` loads `hooks/hooks.codex.json`. It binds the Codex
-lifecycle to `scripts/hooks/`; those scripts are included in the Codex zip and
-are tested along with the manifest. Codex-specific wiring lives only in that
-hook file, while the guardrails themselves remain a single shared source.
+The Codex plugin manifest contains only supported plugin fields and runtime
+skills. Codex does not accept plugin-level lifecycle hook registration, so the
+ZIP deliberately excludes development `hooks/`, `scripts/hooks/`, wiki, and
+project instructions. Codex-specific execution lives in the
+`aissert-codex` skill; Claude-only development enforcement remains under
+`.claude/` and delegates to `scripts/hooks/`.
 
 ### Project instructions
 

@@ -50,13 +50,13 @@ exists. Three triggers (`config.py`):
 2. **`architectural_anchor_changed`** — any of `SIGNIFICANT_ANCHORS` (e.g.
    `DESIGN.md`, `skills/aissert/SKILL.md`, `canary/manifest.json`) or a file
    under `SIGNIFICANT_PREFIXES` (`.claude/`, `.codex/`, `agents/`, `scripts/claude/`, `scripts/codex/`,
-   `scripts/hooks/`, `hooks/`, `skills/aissert/scripts/`,
+   `scripts/hooks/`, `skills/aissert/scripts/`,
    `skills/aissert/references/`) changed — these
    implement or gate the architecture and automation, so any change is
    significant regardless of size.
 3. **`uncovered_high_signal_path`** — a changed file under a high-signal
    prefix (`.claude/`, `.codex/`, `agents/`, `skills/`, `commands/`, `golden/`,
-   `canary/`, `scripts/claude/`, `scripts/codex/`, `scripts/hooks/`, `hooks/`, `scripts/wiki/`, or one of
+   `canary/`, `scripts/claude/`, `scripts/codex/`, `scripts/hooks/`, `scripts/wiki/`, or one of
    `README.md`/`DESIGN.md`/`PROJECT_RULES.md`/`AGENTS.md`/`CLAUDE.md`) that no wiki page's `source_paths`
    covers at all — a gap in wiki coverage itself.
 

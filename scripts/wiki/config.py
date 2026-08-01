@@ -37,7 +37,6 @@ SIGNIFICANT_ANCHORS = [
     ".claude-plugin/plugin.json",
     ".claude-plugin/marketplace.json",
     ".codex-plugin/plugin.json",
-    "hooks/hooks.codex.json",
     "skills/aissert/SKILL.md",
     "skills/aissert-workflow/SKILL.md",
     "commands/eval.md",
@@ -56,7 +55,6 @@ SIGNIFICANT_PREFIXES = [
     "scripts/claude/",
     "scripts/codex/",
     "scripts/hooks/",
-    "hooks/",
     "skills/aissert/scripts/",
     "skills/aissert/references/",
 ]

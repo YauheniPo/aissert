@@ -8,6 +8,7 @@ source_paths:
   - agents/judge-supported-output-facts.md
   - agents/judge-expected-output-facts.md
   - skills/aissert/SKILL.md
+  - skills/aissert-codex/SKILL.md
   - skills/aissert-workflow/SKILL.md
   - commands/eval.md
   - commands/smoke.md
@@ -102,5 +103,6 @@ wrappers only when their slash-command signatures change.
 
 `skills/aissert/SKILL.md` and `skills/aissert-workflow/SKILL.md` contain no
 host-specific rules. Claude Code agent selection stays in `commands/*.md`; the
-Codex-only `skills/aissert-codex/SKILL.md` invokes `run_codex_eval.py` and owns
-its isolated-worker rules.
+Codex-only `skills/aissert-codex/SKILL.md` invokes `run_codex_eval.py`, owns
+its isolated-worker rules, and accepts an explicit external `SKILL.md` for a
+target that is not bundled with aissert.

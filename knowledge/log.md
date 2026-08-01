@@ -5,10 +5,10 @@ changed, why, which pages.
 
 ## 2026-08-01
 
-- Fixed Codex ZIP runtime boundaries: added a Codex-only execution adapter so
-  evaluations reach `run_codex_eval.py`; made invariant checks package-aware;
-  and made SessionStart skip development-only wiki instructions when those
-  files are not packaged. Added archive-execution regression coverage.
+- Fixed Codex plugin validation and runner coverage: removed unsupported
+  manifest hooks and their package-only files; allowed SemVer snapshot
+  prereleases; added explicit external target-skill source; constrained smoke
+  to three items; forwarded gate/model options; and revalidated resumed facts.
 - Added `scripts/codex/reinstall_plugin.sh`, the Codex equivalent of the
   Claude local-refresh helper. It checks the package, refreshes the local
   cachebuster and marketplace install, then starts a new Codex session.

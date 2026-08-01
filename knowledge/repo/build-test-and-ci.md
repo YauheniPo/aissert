@@ -18,7 +18,6 @@ source_paths:
   - scripts/claude
   - scripts/codex
   - .codex-plugin
-  - hooks
   - scripts/hooks
   - scripts/build_plugin_zip.py
   - scripts/build_codex_plugin_zip.py
@@ -157,20 +156,17 @@ documents the intended admin-side setup for the Claude GitHub app: review PRs
 on open/push, optionally support `@claude review`, post findings only, and
 leave approval/blocking decisions to humans.
 
-## Codex automation
+## Codex runtime
 
-`.codex-plugin/plugin.json` registers `hooks/hooks.codex.json`, which wires
-the same four lifecycle events to `scripts/hooks/`. This is packaged into the
-Codex zip, unlike `.claude/`. The two host configuration files are separate;
-the guard, invariant, golden-version, wiki-session, and stop-verification
-logic are a single source. `tests/test_claude_automation.py` validates both
-wiring surfaces and the Codex package allowlist.
-
-The ZIP intentionally omits project-only `knowledge/` and `scripts/wiki/`.
-Its SessionStart hook recognizes that runtime profile and emits only a plugin
-loaded notice; the full wiki read-plan remains available in the development
-checkout. Invariants likewise validate only manifests that are actually
-present in the running package.
+Codex plugin manifests do not support plugin-level lifecycle hooks. The Codex
+ZIP therefore contains only supported runtime content: its manifest, skills,
+runtime agent templates, contracts, deterministic evaluation scripts, and
+synthetic fixtures. It deliberately excludes `hooks/`, `scripts/hooks/`,
+`knowledge/`, `scripts/wiki/`, and project policy. The `aissert-codex` skill
+invokes `run_codex_eval.py`; the runner handles isolated workers, smoke's
+three-item subset, external target-skill source, per-run gate overrides, and
+model-id recording. `tests/test_claude_automation.py` checks this archive
+boundary.
 
 `scripts/codex/reinstall_plugin.sh` is development automation only; it is not
 included in either plugin archive. It keeps the local Codex installation in

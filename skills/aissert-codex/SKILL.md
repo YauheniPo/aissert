@@ -24,3 +24,11 @@ three items and two iterations. The runner's exit codes are authoritative:
 `0` passed, `1` quality gate failed, `2` pipeline or runtime failure. Report
 the resulting `results.json` and `report.md` paths without replacing its
 deterministic verdict.
+
+For a target skill installed outside this plugin, also pass
+`--target-skill-file /absolute/path/to/SKILL.md` (or the directory containing
+it). The runner embeds that file in each isolated worker prompt, so the worker
+does not need access to the target plugin's files. Forward user-supplied gate
+overrides as `--min-supported-to-total-output-facts-ratio` and
+`--min-covered-to-total-reference-facts-ratio`; use `--model-id` only to
+record the active model in `results.json`.

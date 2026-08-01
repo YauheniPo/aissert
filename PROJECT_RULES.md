@@ -68,8 +68,8 @@ For wiki maintenance, use the canonical workflow in
 `project-skills/wiki-maintenance/SKILL.md`; do not copy its procedure into
 host instruction files.
 
-**Session-start, not commit-time.** The `SessionStart` hook
-(`scripts/hooks/session_start.py`, wired by each host integration)
+**Session-start, not commit-time.** The development `SessionStart` hook
+(`scripts/hooks/session_start.py`, wired by the Claude Code integration)
 injects a maintenance action item into context when it finds structural
 breakage or `significant_change: true`. Do that maintenance **before**
 starting the user's task. Commits and pushes are never blocked on wiki

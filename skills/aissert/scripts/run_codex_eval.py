@@ -11,10 +11,13 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from aggregate import EXIT_PIPELINE_ERROR, PipelineError, validate_facts
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -48,8 +51,22 @@ with no Markdown fence or prose.
 """.format(template=template, contract=CONTRACT, payload=json.dumps(payload, indent=2))
 
 
-def target_prompt(skill: str, snapshot: str) -> str:
-    template = (REPO_ROOT / "skills" / skill / "SKILL.md").read_text(encoding="utf-8")
+def target_skill_template(skill: str, supplied_path: Path | None) -> str:
+    """Load either a bundled target skill or an explicit external SKILL.md."""
+    path = supplied_path or REPO_ROOT / "skills" / skill / "SKILL.md"
+    if path.is_dir():
+        path = path / "SKILL.md"
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as error:
+        source = "--target-skill-file" if supplied_path else "the bundled plugin"
+        raise PipelineError(
+            f"target skill {skill!r} is unavailable from {source}: {path}; "
+            "pass --target-skill-file /path/to/SKILL.md for an external skill"
+        ) from error
+
+
+def target_prompt(template: str, snapshot: str) -> str:
     return """You are an isolated target-skill runtime worker. Do not use tools, read
 files, or write files. Follow this skill using only the supplied snapshot. Return
 only the skill's final output, with no preamble or commentary.
@@ -115,6 +132,14 @@ def has_json_object(path: Path) -> bool:
         return False
 
 
+def has_valid_facts(path: Path) -> bool:
+    try:
+        validate_facts(read_json(path), f"facts artifact {path}")
+    except (OSError, json.JSONDecodeError, PipelineError):
+        return False
+    return True
+
+
 def has_text(path: Path) -> bool:
     try:
         return path.is_file() and bool(path.read_text(encoding="utf-8").strip())
@@ -159,13 +184,58 @@ def shell(args: list[str]) -> int:
     return subprocess.run(args).returncode
 
 
+def materialize_smoke_golden_set(
+    golden_set: Path, run_dir: Path, item_paths: list[Path]
+) -> Path:
+    """Create the exact three-item golden view consumed by aggregate.py."""
+    smoke_set = run_dir / ".aissert-smoke-golden"
+    items_dir = smoke_set / "items"
+    if items_dir.exists():
+        shutil.rmtree(items_dir)
+    items_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(golden_set / "manifest.json", smoke_set / "manifest.json")
+    for item_path in item_paths:
+        shutil.copy2(item_path, items_dir / item_path.name)
+    return smoke_set
+
+
+def aggregate_command(args: argparse.Namespace, golden_set: Path) -> list[str]:
+    command = [
+        sys.executable,
+        str(SCRIPT_DIR / "aggregate.py"),
+        "--run-dir",
+        str(args.run_dir),
+        "--golden-set",
+        str(golden_set),
+        "--iterations",
+        str(args.iterations),
+    ]
+    for option, value in (
+        ("--min-supported-to-total-output-facts-ratio", args.min_supported_to_total_output_facts_ratio),
+        ("--min-covered-to-total-reference-facts-ratio", args.min_covered_to_total_reference_facts_ratio),
+        ("--model-id", args.model_id),
+    ):
+        if value is not None:
+            command += [option, str(value)]
+    return command
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--golden-set", required=True, type=Path)
     parser.add_argument("--run-dir", required=True, type=Path)
     parser.add_argument("--target-skill")
+    parser.add_argument(
+        "--target-skill-file",
+        type=Path,
+        default=None,
+        help="external target SKILL.md (or its directory) when it is not bundled",
+    )
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--smoke", action="store_true")
+    parser.add_argument("--min-supported-to-total-output-facts-ratio", type=float, default=None)
+    parser.add_argument("--min-covered-to-total-reference-facts-ratio", type=float, default=None)
+    parser.add_argument("--model-id", default=None)
     parser.add_argument("--canary-only", action="store_true")
     parser.add_argument("--codex-cmd", default="codex")
     parser.add_argument("--timeout", type=int, default=600)
@@ -200,13 +270,29 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     manifest = read_json(args.golden_set / "manifest.json")
     target_skill = args.target_skill or manifest["target_skill"]
-    items = [read_json(path) for path in sorted((args.golden_set / "items").glob("*.json"))]
+    item_paths = sorted((args.golden_set / "items").glob("*.json"))
+    if args.smoke:
+        if len(item_paths) < 3:
+            print("run_codex_eval: --smoke requires at least 3 golden items", file=sys.stderr)
+            return EXIT_PIPELINE_ERROR
+        item_paths = item_paths[:3]
+        aggregate_golden_set = materialize_smoke_golden_set(
+            args.golden_set, args.run_dir, item_paths
+        )
+    else:
+        aggregate_golden_set = args.golden_set
+    items = [read_json(path) for path in item_paths]
+    try:
+        target_template = target_skill_template(target_skill, args.target_skill_file)
+    except PipelineError as error:
+        print(f"run_codex_eval: pipeline error: {error}", file=sys.stderr)
+        return EXIT_PIPELINE_ERROR
     generation: list[tuple[str, callable]] = []
     for item in items:
         for iteration in range(1, args.iterations + 1):
             output = args.run_dir / "runs" / item["id"] / f"{iteration}.md"
             if not has_text(output):
-                generation.append((f"generate {item['id']}/{iteration}", lambda p=target_prompt(target_skill, item["input"]["snapshot"]), o=output: (o.parent.mkdir(parents=True, exist_ok=True), o.write_text(invoke_codex(args.codex_cmd, p, args.timeout) + "\n", encoding="utf-8"))))
+                generation.append((f"generate {item['id']}/{iteration}", lambda p=target_prompt(target_template, item["input"]["snapshot"]), o=output: (o.parent.mkdir(parents=True, exist_ok=True), o.write_text(invoke_codex(args.codex_cmd, p, args.timeout) + "\n", encoding="utf-8"))))
     errors = run_parallel(generation, args.workers)
     if errors:
         print("run_codex_eval: generation failed:\n  " + "\n  ".join(errors), file=sys.stderr); return 2
@@ -216,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
         for iteration in range(1, args.iterations + 1):
             raw = (args.run_dir / "runs" / item["id"] / f"{iteration}.md").read_text(encoding="utf-8")
             output = args.run_dir / "facts" / item["id"] / f"{iteration}.json"
-            if not has_json_object(output):
+            if not has_valid_facts(output):
                 extraction.append((f"extract {item['id']}/{iteration}", lambda t=extractor, p={"raw_output": raw}, o=output: write_json_response(o, invoke_codex(args.codex_cmd, worker_prompt(t, p), args.timeout))))
     errors = run_parallel(extraction, args.workers)
     if errors:
@@ -225,7 +311,14 @@ def main(argv: list[str] | None = None) -> int:
     judging: list[tuple[str, callable]] = []
     for item in items:
         for iteration in range(1, args.iterations + 1):
-            facts = read_json(args.run_dir / "facts" / item["id"] / f"{iteration}.json")["facts"]
+            facts_path = args.run_dir / "facts" / item["id"] / f"{iteration}.json"
+            try:
+                facts_data = read_json(facts_path)
+                validate_facts(facts_data, f"facts artifact {facts_path}")
+                facts = facts_data["facts"]
+            except (OSError, json.JSONDecodeError, PipelineError) as error:
+                print(f"run_codex_eval: pipeline error: {error}", file=sys.stderr)
+                return EXIT_PIPELINE_ERROR
             common = {
                 "reference_facts": item["reference"]["reference_facts"],
                 "output_facts": facts,
@@ -237,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
     errors = run_parallel(judging, args.workers)
     if errors:
         print("run_codex_eval: judging failed:\n  " + "\n  ".join(errors), file=sys.stderr); return 2
-    return shell([sys.executable, str(SCRIPT_DIR / "aggregate.py"), "--run-dir", str(args.run_dir), "--golden-set", str(args.golden_set), "--iterations", str(args.iterations)])
+    return shell(aggregate_command(args, aggregate_golden_set))
 
 
 if __name__ == "__main__":

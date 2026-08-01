@@ -80,8 +80,9 @@ def test_codex_marketplace_and_manifest():
     assert marketplace["name"] == "aissert"
     assert marketplace["interface"]["displayName"] == "aissert"
     assert plugin["name"] == "aissert"
-    assert re.fullmatch(r"\d+\.\d+\.\d+(?:\+[a-z0-9.-]+)?", plugin["version"])
+    assert re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", plugin["version"])
     assert plugin["skills"] == "./skills/"
+    assert "hooks" not in plugin
     entry = next(p for p in marketplace["plugins"] if p["name"] == "aissert")
     assert entry["source"] == {"source": "local", "path": "./"}
     assert entry["policy"] == {
@@ -104,6 +105,26 @@ def test_codex_package_uses_shared_runtime_sources_only():
     assert "skills/aissert/scripts/run_codex_eval.py" in include_paths
     assert "skills/aissert/scripts/run_target.py" not in include_paths
     assert "commands" not in include_paths
+    assert "hooks" not in include_paths
+    assert "scripts/hooks" not in include_paths
+
+
+def test_codex_package_accepts_snapshot_prerelease_versions(tmp_path, monkeypatch):
+    script_path = REPO / "scripts" / "build_codex_plugin_zip.py"
+    spec = importlib.util.spec_from_file_location("build_codex_plugin_zip", script_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    for version in ("0.11.1", "0.11.1-SNAPSHOT-pr42", "0.11.1+codex.local", "0.11.1-rc.1+build.7"):
+        assert module.SEMVER_RE.fullmatch(version)
+
+    snapshot_manifest = tmp_path / "plugin.json"
+    manifest = load_json(".codex-plugin/plugin.json")
+    manifest["version"] = "0.11.1-SNAPSHOT-pr42"
+    snapshot_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(module, "MANIFEST_PATH", snapshot_manifest)
+    assert module.load_version() == "0.11.1-SNAPSHOT-pr42"
 
 
 # ----------------------------------------------------------------- agents
@@ -162,7 +183,8 @@ def test_codex_runner_requires_modern_python_for_strict_contract_validation():
     runner = (REPO / "skills" / "aissert" / "scripts" / "run_codex_eval.py").read_text(encoding="utf-8")
     assert "sys.version_info < (3, 10)" in runner
     assert "if not has_text(output):" in runner
-    assert runner.count("if not has_json_object(output):") == 4
+    assert "if not has_valid_facts(output):" in runner
+    assert runner.count("if not has_json_object(output):") == 3
 
 
 def test_example_bug_summarizer_keeps_failed_mitigations_and_avoids_inference():

@@ -10,7 +10,6 @@ source_paths:
   - .claude-plugin/plugin.json
   - .claude-plugin/marketplace.json
   - .codex-plugin/plugin.json
-  - hooks/hooks.codex.json
   - agents
   - skills
   - commands
@@ -46,11 +45,9 @@ aissert/
 │   ├── plugin.json            # name "aissert" — IMMUTABLE, checked by tests/test_plugin_schema.py
 │   └── marketplace.json       # repo = its own single-plugin marketplace
 ├── .codex-plugin/
-│   └── plugin.json            # Codex manifest; points at shared skills and Codex hook wiring
+│   └── plugin.json            # Codex manifest; points at packaged skills
 ├── scripts/codex/
 │   └── reinstall_plugin.sh    # local cachebuster, reinstall, and fresh Codex session
-├── hooks/
-│   └── hooks.codex.json       # Codex lifecycle wiring only (no duplicated rules)
 ├── agents/                    # subagent prompts (Task tool, clean context, tools: [])
 │   ├── fact-extractor.md
 │   ├── judge-supported-output-facts.md
@@ -125,10 +122,11 @@ Deeper dives: [eval-pipeline.md](../domains/eval-pipeline.md) (data flow),
 [golden-and-canary.md](../domains/golden-and-canary.md) (test data layers),
 [aggregate-py.md](../hotspots/aggregate-py.md) (the math).
 
-`.claude/` is Claude-only development automation. `hooks/hooks.codex.json` is
-the corresponding Codex-only wiring. Both invoke `scripts/hooks/`, so their
-enforcement rules have one source. The packages are allowlist-built by
-`scripts/build_plugin_zip.py` and `scripts/build_codex_plugin_zip.py`.
+`.claude/` is Claude-only development automation and delegates to
+`scripts/hooks/`. Codex plugin manifests do not support lifecycle-hook
+registration, so the Codex archive contains only evaluation runtime files.
+Both packages are allowlist-built by `scripts/build_plugin_zip.py` and
+`scripts/build_codex_plugin_zip.py`.
 
 `project-skills/` owns the neutral `verify` and `wiki-maintenance` procedures.
 The `.claude/skills/` and `.codex/skills/` files are discovery adapters only;

@@ -19,14 +19,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / ".codex-plugin" / "plugin.json"
-SEMVER_RE = re.compile(r"\d+\.\d+\.\d+(?:\+[a-z0-9.-]+)?")
+SEMVER_RE = re.compile(
+    r"\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+)
 EXCLUDE_NAMES = {".DS_Store", "__pycache__"}
 EXCLUDE_SUFFIXES = {".pyc"}
 INCLUDE_PATHS = [
     ".codex-plugin",
-    "hooks",
     "agents",
-    "scripts/hooks",
     "skills/aissert/SKILL.md",
     "skills/aissert-codex/SKILL.md",
     "skills/aissert-workflow/SKILL.md",
@@ -53,8 +53,8 @@ def load_version() -> str:
     version = manifest["version"]
     if not isinstance(version, str) or SEMVER_RE.fullmatch(version) is None:
         raise ValueError(
-            "Codex manifest version must be MAJOR.MINOR.PATCH or include a "
-            "+codex.<cachebuster> local-development suffix"
+            "Codex manifest version must be a SemVer release, prerelease, or "
+            "build-metadata version"
         )
     if not (REPO_ROOT / "skills" / "aissert" / "SKILL.md").is_file():
         raise ValueError("Codex package is missing the aissert skill")
