@@ -8,6 +8,8 @@ source_paths:
   - agents/judge-supported-output-facts.md
   - agents/judge-expected-output-facts.md
   - skills/aissert/SKILL.md
+  - skills/aissert-codex/SKILL.md
+  - skills/aissert-workflow/SKILL.md
   - commands/eval.md
   - commands/smoke.md
   - skills/aissert/references/results-schema.md
@@ -62,9 +64,9 @@ never re-extracted at eval time — see
 ## Agents (`agents/*.md`)
 
 All three: `tools: []` (never read/write files — content is pasted into the
-prompt, the orchestrator persists the JSON out) and `model: claude-sonnet-5`
-pinned (schema-lint enforced). Changing the pin is the highest-risk change in
-this repo — see the model-pin playbook in
+prompt, the orchestrator persists the JSON out) and `model: inherit`, which
+uses the current Claude Code session model. Changing the selected session model
+is the highest-risk evaluation change in this repo — see the model playbook in
 [change-playbooks.md](change-playbooks.md).
 
 | Agent | Job | Sees | Never sees |
@@ -78,7 +80,7 @@ rubric + anchored right/wrong examples. If a judge systematically misjudges a
 class of cases, fix the rubric/examples in `agents/judge-*.md` — never a
 threshold in `manifest.json`.
 
-## Orchestrator (`skills/aissert/SKILL.md`)
+## Orchestrator (`skills/aissert-workflow/SKILL.md`)
 
 Single place that knows the whole flow. Hard discipline: it dispatches
 subagents and scripts, it **never evaluates anything itself** — every number
@@ -98,3 +100,9 @@ extractor gates.
 `commands/smoke.md` is the separate fast entry point: it supplies the internal
 `--smoke` marker, fixing the matrix at 3 items × 2 iterations. Touch these
 wrappers only when their slash-command signatures change.
+
+`skills/aissert/SKILL.md` and `skills/aissert-workflow/SKILL.md` contain no
+host-specific rules. Claude Code agent selection stays in `commands/*.md`; the
+Codex-only `skills/aissert-codex/SKILL.md` invokes `run_codex_eval.py`, owns
+its isolated-worker rules, and accepts an explicit external `SKILL.md` for a
+target that is not bundled with aissert.

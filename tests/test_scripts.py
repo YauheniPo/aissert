@@ -3,9 +3,12 @@ import json
 import stat
 from pathlib import Path
 
+import pytest
+
 import run_target
+import run_codex_eval
 import validate_golden
-from aggregate import EXIT_PASS, EXIT_PIPELINE_ERROR, load_golden_set
+from aggregate import EXIT_PASS, EXIT_PIPELINE_ERROR, PipelineError, load_golden_set
 
 from test_aggregate import golden_item_payload, make_golden, write_json
 
@@ -71,6 +74,69 @@ def test_example_set_exercises_weighted_recall():
     assert any(item.weights for item in golden.items), (
         "example set should include at least one weighted item as a fixture"
     )
+
+
+# -------------------------------------------------------- run_codex_eval
+
+
+def test_codex_runner_reads_an_explicit_external_target_skill(tmp_path):
+    external_skill = tmp_path / "external" / "SKILL.md"
+    external_skill.parent.mkdir()
+    external_skill.write_text("# external target\n", encoding="utf-8")
+
+    assert run_codex_eval.target_skill_template("external", external_skill) == "# external target\n"
+    with pytest.raises(PipelineError, match="--target-skill-file"):
+        run_codex_eval.target_skill_template("external", None)
+
+
+def test_codex_runner_smoke_uses_three_items_regenerates_bad_facts_and_forwards_options(tmp_path, monkeypatch):
+    gdir = make_golden(
+        tmp_path,
+        [golden_item_payload(f"gs-{number:03d}", 2) for number in range(1, 5)],
+    )
+    external_skill = tmp_path / "external-skill.md"
+    external_skill.write_text("# external target\n", encoding="utf-8")
+    run_dir = tmp_path / "run"
+    bad_facts = run_dir / "facts" / "gs-001" / "1.json"
+    write_json(bad_facts, {})
+    commands: list[list[str]] = []
+
+    monkeypatch.setattr(run_codex_eval, "canary_tasks", lambda *args: [])
+    monkeypatch.setattr(run_codex_eval, "shell", lambda args: commands.append(args) or EXIT_PASS)
+
+    def fake_invoke(_codex_cmd, prompt, _timeout):
+        if "fact-extractor" in prompt:
+            return json.dumps({"facts": [{"id": "f1", "type": "claim", "text": "fact"}]})
+        if "judge-supported-output-facts" in prompt:
+            return json.dumps({"verdicts": [{"fact_id": "f1", "verdict": "supported", "evidence": "ok"}]})
+        if "judge-expected-output-facts" in prompt:
+            return json.dumps({"verdicts": [
+                {"reference_fact_id": "gf1", "verdict": "covered", "covered_by": "f1", "evidence": "ok"},
+                {"reference_fact_id": "gf2", "verdict": "missing", "evidence": "not present"},
+            ]})
+        return "target output"
+
+    monkeypatch.setattr(run_codex_eval, "invoke_codex", fake_invoke)
+    assert run_codex_eval.main([
+        "--golden-set", str(gdir), "--run-dir", str(run_dir), "--smoke",
+        "--target-skill-file", str(external_skill),
+        "--min-supported-to-total-output-facts-ratio", "0.9",
+        "--min-covered-to-total-reference-facts-ratio", "0.8",
+        "--model-id", "codex-test-model", "--workers", "1",
+    ]) == EXIT_PASS
+
+    generated = sorted(path.relative_to(run_dir).as_posix() for path in (run_dir / "runs").rglob("*.md"))
+    assert generated == [
+        "runs/gs-001/1.md", "runs/gs-001/2.md", "runs/gs-002/1.md",
+        "runs/gs-002/2.md", "runs/gs-003/1.md", "runs/gs-003/2.md",
+    ]
+    assert run_codex_eval.has_valid_facts(bad_facts)
+    aggregate = commands[-1]
+    assert "--min-supported-to-total-output-facts-ratio" in aggregate
+    assert "--min-covered-to-total-reference-facts-ratio" in aggregate
+    assert "--model-id" in aggregate
+    smoke_golden = Path(aggregate[aggregate.index("--golden-set") + 1])
+    assert len(list((smoke_golden / "items").glob("*.json"))) == 3
 
 
 # --------------------------------------------------------------- run_target

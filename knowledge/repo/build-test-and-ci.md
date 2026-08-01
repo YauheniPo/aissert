@@ -5,23 +5,33 @@ summary: Local dev loop for the plugin, pytest invocation, and what GitHub Actio
 source_paths:
   - .claude/settings.json
   - .claude/skills
+  - .codex/skills
+  - project-skills
   - .claude/agents
   - tests
   - .github/PULL_REQUEST_TEMPLATE.md
   - .github/workflows/ci.yml
+  - .github/workflows/snapshot.yml
   - .github/workflows/claude.yml
   - .github/CLAUDE_CODE_REVIEW_CONFIG.md
   - .github/workflows/auto-release.yml
   - .github/workflows/release.yml
   - scripts/claude
+  - scripts/codex
+  - .codex-plugin
+  - scripts/hooks
   - scripts/build_plugin_zip.py
+  - scripts/build_codex_plugin_zip.py
   - scripts/bump_version.py
   - README.md
+  - PROJECT_RULES.md
+  - AGENTS.md
+  - CLAUDE.md
 related_pages:
   - ../index.md
   - ../hotspots/aggregate-py.md
   - ../domains/change-playbooks.md
-last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
+last_validated_commit: 3d3e86042a857f6b8f7023c559cca5eb4421bcb3
 ---
 
 ## Local dev loop (plugin)
@@ -40,6 +50,13 @@ uninstall+install (needed because `/plugin update` is version-gated and never
 re-copies an unchanged-version working tree), then `exec claude` for a fresh
 session. Must run outside a Claude Code session: the in-session sandbox
 blocks writes to `~/.claude/plugins`.
+
+Codex has the matching plain-terminal command:
+`scripts/codex/reinstall_plugin.sh`. It validates the Codex package, registers
+the local directory marketplace when needed, updates the local manifest
+cachebuster, runs `codex plugin add aissert@aissert`, and then `exec codex` for
+a fresh session. Its cache write is likewise unavailable from a sandboxed
+Codex turn.
 
 For other users/teams (no clone needed) — this repo doubles as its own
 marketplace (`.claude-plugin/marketplace.json`), so anyone can point at the
@@ -69,7 +86,7 @@ manifest mismatch check or when using a different matching dataset.
 pytest tests/ -q
 ```
 
-Python 3.12, stdlib-only (`CLAUDE.md` hard rule: add a dependency only with a
+Python 3.12, stdlib-only (`PROJECT_RULES.md` hard rule: add a dependency only with a
 clear reason). Test files:
 
 | File | Covers |
@@ -81,7 +98,7 @@ clear reason). Test files:
 | `test_wiki.py` | `scripts/wiki/lib.py` — frontmatter parsing, significant-change heuristics, lint checks. |
 | `test_claude_automation.py` | `.claude` settings, hook helpers, and `@claude` workflow wiring. |
 
-Rule from `CLAUDE.md`: every `aggregate.py` behavior gets a unit test — it's
+Rule from `PROJECT_RULES.md`: every `aggregate.py` behavior gets a unit test — it's
 fully deterministic code, no excuses.
 
 No local pytest install ships with the repo; a gitignored `.venv` works fine:
@@ -108,10 +125,19 @@ repository does not yet contain the standalone scheduled workflow listed in
 the roadmap. If a prompt change needs confirmation before the next eval, run
 the canary locally/by hand.
 
+## Snapshot packaging (`.github/workflows/snapshot.yml`)
+
+Every eligible PR has one snapshot workflow with no duplicate package builds:
+`prepare-snapshot` calculates the snapshot version, then
+`build-claude-plugin` and `build-codex-plugin` independently build exactly one
+host archive each. `publish-snapshot` downloads those two artifacts and creates
+or updates the prerelease. GitHub therefore displays a distinct build check for
+each host while the release uses the same files that passed those checks.
+
 ## Claude Code automation
 
-Development-time Claude Code automation lives under `.claude/` and
-`scripts/claude/`; it is not part of the packaged plugin zip. The project
+Claude-only wiring lives under `.claude/` and `scripts/claude/`; its thin
+entrypoints invoke the host-neutral rules in `scripts/hooks/`. The project
 settings wire:
 
 - `SessionStart` — injects the wiki read-plan.
@@ -122,7 +148,7 @@ settings wire:
 - `Stop` — runs proportional local verification before a Claude turn ends.
 
 Skills under `.claude/skills/` package repeated procedures (`verify`,
-`wiki-maintenance`). Dev helper agents under `.claude/agents/` provide a cold
+`wiki-maintenance`) through canonical `project-skills/` workflows. Dev helper agents under `.claude/agents/` provide a cold
 review pass, release audit, and wiki-maintenance helper; runtime eval agents
 remain under top-level `agents/`.
 
@@ -138,13 +164,41 @@ documents the intended admin-side setup for the Claude GitHub app: review PRs
 on open/push, optionally support `@claude review`, post findings only, and
 leave approval/blocking decisions to humans.
 
+## Codex runtime
+
+Codex plugin manifests do not support plugin-level lifecycle hooks. The Codex
+ZIP therefore contains only supported runtime content: its manifest, skills,
+runtime agent templates, contracts, deterministic evaluation scripts, and
+synthetic fixtures. It deliberately excludes `hooks/`, `scripts/hooks/`,
+`knowledge/`, `scripts/wiki/`, and project policy. The `aissert-codex` skill
+invokes `run_codex_eval.py`; the runner handles isolated workers, smoke's
+three-item subset, external target-skill source, per-run gate overrides, and
+model-id recording. `tests/test_claude_automation.py` checks this archive
+boundary.
+
+`scripts/codex/reinstall_plugin.sh` is development automation only; it is not
+included in either plugin archive. It keeps the local Codex installation in
+sync with this working tree without making cachebuster or marketplace details
+part of the runtime skill.
+
+## Project instructions and workflows
+
+`PROJECT_RULES.md` is the one source of shared engineering rules. `AGENTS.md`
+and `CLAUDE.md` contain only their respective integration details and point
+back to it. The canonical `verify` and `wiki-maintenance` procedures live in
+`project-skills/`; the host-local skill files are discovery adapters. Their
+verification covers both package surfaces and their wiki maintenance explicitly
+checks the integration documentation and source inventory.
+
 ## Packaging & release
 
-`scripts/build_plugin_zip.py` zips the plugin via an **allowlist**
-(`.claude-plugin/`, `agents/`, `skills/`, `commands/`, `golden/example/`,
-`canary/`, `README.md`, `LICENSE`), not a denylist — a new dev file
-(`tests/`, `knowledge/`, `scripts/wiki/`, ...) never ships by accident, and
-`golden-local/` structurally can't be in the zip since it's not on the list.
+`scripts/build_plugin_zip.py` zips the plugin via an **allowlist**: its
+manifest, agents, commands, example/canary data, and only the shared skill
+entrypoints, contracts, and deterministic scripts the interactive workflow
+needs. It deliberately excludes `run_target.py` (CI-only), `run_codex_eval.py`,
+project instructions, development automation, tests, wiki, and project-policy
+documents. `golden-local/` structurally can't be in the zip since it is not on
+the list.
 Fails (exit 2) on a `plugin.json`/`marketplace.json` version mismatch or a
 missing allowlisted path. Needed for Claude Desktop's "Upload local plugin"
 (no `--plugin-dir` equivalent there) and any offline install.

@@ -6,6 +6,7 @@ source_paths:
   - skills/aissert/scripts/aggregate.py
   - skills/aissert/scripts/validate_golden.py
   - skills/aissert/scripts/check_canary.py
+  - skills/aissert/scripts/run_codex_eval.py
   - skills/aissert/references/results-schema.md
   - tests/test_aggregate.py
 related_pages:
@@ -19,8 +20,13 @@ last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
 place that computes `supported_to_total_output_facts_ratio` and
 `covered_to_total_reference_facts_ratio`, applies their minimum thresholds,
 and decides `verdict`.
-CLAUDE.md hard rule: all scoring math and pass/fail decisions live in Python,
+PROJECT_RULES.md hard rule: all scoring math and pass/fail decisions live in Python,
 never delegated to an LLM.
+
+`run_codex_eval.py` is an adapter, not another scoring implementation: it
+creates the isolated runtime artifacts for Codex and then calls the same
+canary validation and aggregation modules. Keep every ratio, gate, exit-code
+meaning, and results schema in this hotspot's shared Python path.
 
 ## Shared functions — don't drift the contract in one place only
 

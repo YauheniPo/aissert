@@ -101,7 +101,7 @@ field) is a **pipeline error, never a silent skip**.
     "set_version": "1.0.0",
     "owner": "epopovich"
   },
-  "model_id": "claude-sonnet-5",
+  "model_id": "provider/active-session-model",
   "iterations": 3,
   "thresholds": {
     "min_supported_to_total_output_facts_ratio": 0.80,

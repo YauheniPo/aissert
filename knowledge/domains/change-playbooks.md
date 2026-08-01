@@ -1,7 +1,7 @@
 ---
 title: Change playbooks — what to re-verify before updating
 kind: domain
-summary: Per change-type checklist (judge prompt, aggregate.py, model pin, golden set, canary item) — what CI does NOT catch for you.
+summary: Per change-type checklist (judge prompt, aggregate.py, active model, golden set, canary item) — what CI does NOT catch for you.
 source_paths:
   - skills/aissert/scripts/aggregate.py
   - agents/judge-supported-output-facts.md
@@ -50,14 +50,14 @@ Then, by change type:
 3. `pytest tests/ -q` — this also re-exercises `check_canary.py` and
    `validate_golden.py`, which import from `aggregate.py`.
 
-## Model pin (`model:` in `agents/*.md`)
+## Runtime model (`model:` in `agents/*.md`)
 
 The most expensive change in this repo — invalidates the canary baseline and
 every historical metric trend (DESIGN.md §3). Order matters:
 
-1. Change `model:` in all three `agents/*.md` (schema lint requires the same
-   pin everywhere).
-2. Run canary on the new model — **expect divergence**. That's a signal to
+1. Keep the shared runtime agents at `model: inherit`; select the desired
+   current model in the Claude Code parent session.
+2. Run canary on the selected model — **expect divergence**. That's a signal to
    re-check the rubric under the new model, not a failure to suppress.
 3. Hand-review every mismatched canary item: is the new model right and the
    old label wrong, or did the new model actually stop following the rubric?

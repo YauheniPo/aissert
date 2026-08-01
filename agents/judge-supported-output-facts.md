@@ -2,7 +2,7 @@
 name: judge-supported-output-facts
 description: Judges each output fact as supported/unsupported against reference facts (precision). Binary verdicts only, strict JSON. Part of the aissert eval pipeline; invoked by the aissert orchestrator only.
 tools: []
-model: claude-sonnet-5
+model: inherit
 color: green
 ---
 
@@ -26,8 +26,11 @@ that support it, or stating why nothing does.
 `supported` — the ENTIRE claim is stated by, or directly follows from, the
 reference facts:
 - Paraphrase, synonyms, different ordering: supported.
-- Strictly weaker claim entailed by a reference fact (reference: "a reset link
-  arrives within 60 seconds" → extracted: "a reset link arrives"): supported.
+- Strictly weaker claim entailed by a reference fact — the extracted fact drops
+  detail from the OUTCOME while keeping every condition the reference attaches
+  to that outcome (reference: "a reset link arrives within 60 seconds" →
+  extracted: "a reset link arrives"): supported. Dropping a CONDITION is not
+  weakening; see the generalization rule below.
 
 `unsupported` — anything else, including:
 - The claim, or ANY part of it, is absent from the reference facts.
@@ -35,8 +38,12 @@ reference facts:
   arrives" → extracted: "a reset link arrives within 60 seconds"): the "60
   seconds" is ungrounded → unsupported.
 - Contradicts a reference fact.
-- Generalizes beyond what the reference states (reference: "on Android 14" →
-  extracted claim with no platform limit presented as universal): unsupported.
+- **Generalizes beyond what the reference states** — the reference scopes a
+  claim to a platform, version, size, or other precondition and the extracted
+  fact states it unconditionally (reference: "on Android 14, avatar upload
+  crashes for files larger than 10 MB" → extracted: "avatar upload crashes"):
+  unsupported. Dropping the conditions makes the claim assert MORE than the
+  reference, not less — this is not a weaker claim.
 - **Synthesized from multiple reference facts into a new conclusion** (a
   recommended action, workaround, root cause, or diagnostic label) that no
   single reference fact states, even if every contributing fact is individually
@@ -54,6 +61,8 @@ When genuinely uncertain after applying the rubric, verdict `unsupported` —
 precision errs against the evaluated output, recall is measured separately.
 
 ## Anchored examples
+
+### Set A
 
 Reference facts:
 - gf1: "User taps 'Forgot password'"
@@ -77,6 +86,20 @@ Reference facts:
    opened" → `unsupported`, evidence "gf1/gf2 describe the steps but no
    reference fact characterizes the issue as display-only; that label is an
    unstated diagnostic conclusion".
+
+### Set B — dropped conditions vs. dropped outcome detail
+
+Reference facts:
+- gh1: "On Android 14, avatar upload crashes for files larger than 10 MB"
+
+7. Extracted: "On Android 14, avatar upload crashes for files larger than 10 MB"
+   → `supported`, evidence "exact match with gh1".
+8. Extracted: "Avatar upload crashes" → `unsupported`, evidence "gh1 scopes the
+   crash to Android 14 and files over 10 MB; stated unconditionally the claim
+   generalizes beyond the reference".
+9. Extracted: "On Android 14, avatar upload fails for files larger than 10 MB" →
+   `supported`, evidence "keeps both of gh1's conditions and only weakens the
+   outcome from 'crashes' to 'fails'".
 
 ## Hard rules
 

@@ -10,7 +10,7 @@ related_pages:
   - ../index.md
   - page-template.md
   - source-inventory.md
-last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
+last_validated_commit: 3d3e86042a857f6b8f7023c559cca5eb4421bcb3
 ---
 
 `python3 scripts/wiki/lint.py` exits 0 only if all of these are empty. Every
@@ -49,14 +49,15 @@ exists. Three triggers (`config.py`):
    far fewer tracked files, so 8 is already a broad change here.
 2. **`architectural_anchor_changed`** — any of `SIGNIFICANT_ANCHORS` (e.g.
    `DESIGN.md`, `skills/aissert/SKILL.md`, `canary/manifest.json`) or a file
-   under `SIGNIFICANT_PREFIXES` (`.claude/`, `agents/`, `scripts/claude/`,
-   `skills/aissert/scripts/`, `skills/aissert/references/`) changed — these
+   under `SIGNIFICANT_PREFIXES` (`.claude/`, `.codex/`, `agents/`, `scripts/claude/`, `scripts/codex/`,
+   `scripts/hooks/`, `skills/aissert/scripts/`,
+   `skills/aissert/references/`) changed — these
    implement or gate the architecture and automation, so any change is
    significant regardless of size.
 3. **`uncovered_high_signal_path`** — a changed file under a high-signal
-   prefix (`.claude/`, `agents/`, `skills/`, `commands/`, `golden/`,
-   `canary/`, `scripts/claude/`, `scripts/wiki/`, or one of
-   `README.md`/`DESIGN.md`/`CLAUDE.md`) that no wiki page's `source_paths`
+   prefix (`.claude/`, `.codex/`, `agents/`, `skills/`, `commands/`, `golden/`,
+   `canary/`, `scripts/claude/`, `scripts/codex/`, `scripts/hooks/`, `scripts/wiki/`, or one of
+   `README.md`/`DESIGN.md`/`PROJECT_RULES.md`/`AGENTS.md`/`CLAUDE.md`) that no wiki page's `source_paths`
    covers at all — a gap in wiki coverage itself.
 
 No `new_src_top_level_folder` heuristic here (the ported project's fourth

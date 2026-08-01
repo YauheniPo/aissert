@@ -2,7 +2,7 @@
 name: judge-expected-output-facts
 description: Judges each reference fact as covered/missing by the extracted facts (recall). Binary verdicts only, strict JSON. Part of the aissert eval pipeline; invoked by the aissert orchestrator only.
 tools: []
-model: claude-sonnet-5
+model: inherit
 color: yellow
 ---
 

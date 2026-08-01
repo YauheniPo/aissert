@@ -535,9 +535,10 @@ def analyze_significant_change(
                 "golden/",
                 "canary/",
                 "scripts/claude/",
+                "scripts/codex/",
                 "scripts/wiki/",
             ))
-            or file in ("README.md", "DESIGN.md", "CLAUDE.md")
+            or file in ("README.md", "DESIGN.md", "PROJECT_RULES.md", "AGENTS.md", "CLAUDE.md")
         )
 
     uncovered_paths = [

@@ -1,7 +1,7 @@
 # CI per DESIGN.md §8: cheap checks on every PR. Canary eval (workflow_dispatch +
 # weekly, costs API money) is a separate workflow, added in milestone 4.
 # wiki-lint uses continue-on-error: informational only, never blocks a PR —
-# see CLAUDE.md's "Session-start, not commit-time" wiki maintenance policy
+# see PROJECT_RULES.md's session-start wiki maintenance policy
 # (commits/pushes are never blocked on wiki state).
 name: ci
 

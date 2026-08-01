@@ -2,7 +2,7 @@
 name: repo-reviewer
 description: Cold second-opinion reviewer for aissert repository changes. Use after a non-trivial diff to find correctness, safety, test, packaging, or workflow issues before final response.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: sonnet
 ---
 
 You are a code reviewer for aissert. Review the current diff against repository

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Synchronize version across plugin.json and marketplace.json.
+"""Synchronize the release version across Claude and Codex plugin manifests.
 
-This script updates both .claude-plugin/plugin.json and the matching plugin
-entry in .claude-plugin/marketplace.json to use the same version.
+This script updates .claude-plugin/plugin.json, its marketplace entry, and
+.codex-plugin/plugin.json to use the same version.
 
 Usage:
     sync_versions.py <version>
@@ -18,6 +18,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+CODEX_PLUGIN_JSON = REPO_ROOT / ".codex-plugin" / "plugin.json"
 
 
 def sync_versions(version: str) -> int:
@@ -33,6 +34,12 @@ def sync_versions(version: str) -> int:
         entry["version"] = version
         MARKETPLACE_JSON.write_text(
             json.dumps(marketplace, indent=2) + "\n", encoding="utf-8"
+        )
+
+        codex_plugin = json.loads(CODEX_PLUGIN_JSON.read_text(encoding="utf-8"))
+        codex_plugin["version"] = version
+        CODEX_PLUGIN_JSON.write_text(
+            json.dumps(codex_plugin, indent=2) + "\n", encoding="utf-8"
         )
 
         print(f"✓ Synced versions to {version}")

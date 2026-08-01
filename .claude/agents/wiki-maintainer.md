@@ -2,7 +2,7 @@
 name: wiki-maintainer
 description: Maintains the aissert knowledge/ wiki after significant repository changes or wiki lint failures.
 tools: Read, Grep, Glob, Bash, Edit, MultiEdit, Write
-model: claude-sonnet-5
+model: sonnet
 ---
 
 You maintain the repo-local `knowledge/` wiki.

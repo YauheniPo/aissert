@@ -9,7 +9,7 @@ related_pages:
   - domains/eval-pipeline.md
   - domains/golden-and-canary.md
   - hotspots/judges-and-canary.md
-last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
+last_validated_commit: 3d3e86042a857f6b8f7023c559cca5eb4421bcb3
 ---
 
 ## Where things stand
@@ -30,9 +30,12 @@ non-borderline, and extractor gates are `1.0`. The observed original
 precision results were `56/64 = 0.875` and `57/64 = 0.890625`.
 Full mismatch breakdown: [judges-and-canary.md](hotspots/judges-and-canary.md).
 
-Plugin packaging and release automation are built: `scripts/build_plugin_zip.py`
-(allowlist-based), `scripts/bump_version.py`, `.github/workflows/auto-release.yml`
-and `release.yml`.
+Plugin packaging and release automation are built for both hosts:
+`scripts/build_plugin_zip.py`, `scripts/build_codex_plugin_zip.py`,
+`scripts/bump_version.py`, `.github/workflows/auto-release.yml`, and
+`release.yml`. Codex executes the shared eval contract through isolated
+`codex exec` workers; its plugin also has lifecycle hooks with shared
+guardrail enforcement.
 
 Milestone 5 (baseline-derived thresholds, report-only period, then gate) has
 not started for any golden set committed to this repo — `golden/example`'s

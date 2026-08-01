@@ -108,9 +108,10 @@ Rules:
   saves their JSON out. Prevents nondeterministic paths and silent overwrites.
 - Judges get `tools: []` in frontmatter — also mitigates prompt injection via the
   evaluated output.
-- Agent model is pinned to `claude-sonnet-5` (frontmatter `model:` in all three
-  agents; enforced by schema lint). Changing the pin invalidates the canary baseline
-  and all metric trends — re-review the canary against the new model before any eval.
+- Runtime agents use `model: inherit`, so Claude Code evaluates them with the
+  current model selected for the parent session. A session-model change still
+  invalidates the canary baseline and metric trends — re-review the canary before
+  comparing results across models.
 
 ## 4. Agents
 

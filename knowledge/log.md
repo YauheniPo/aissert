@@ -3,6 +3,45 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-08-01
+
+- Split snapshot packaging into separate Claude and Codex build jobs, then a
+  dependent publish job that releases the two produced artifacts. Removed the
+  duplicate Codex package build from regular CI.
+- Fixed Codex plugin validation and runner coverage: removed unsupported
+  manifest hooks and their package-only files; allowed SemVer snapshot
+  prereleases; added explicit external target-skill source; constrained smoke
+  to three items; forwarded gate/model options; and revalidated resumed facts.
+- Added `scripts/codex/reinstall_plugin.sh`, the Codex equivalent of the
+  Claude local-refresh helper. It checks the package, refreshes the local
+  cachebuster and marketplace install, then starts a new Codex session.
+- Added `PROJECT_RULES.md` as the single source of shared repository rules,
+  with `AGENTS.md` and `CLAUDE.md` as thin host-specific entry points. Moved
+  `verify` and `wiki-maintenance` procedures to neutral `project-skills/` and
+  added thin discovery adapters for both hosts. Updated structure, build/CI,
+  source-inventory, and lint-rule pages accordingly.
+- Narrowed the Claude package allowlist to actual interactive runtime files.
+  It now excludes the CI-only runner, Codex adapter, and project-policy
+  documents; a regression test protects that boundary.
+
+## 2026-07-31
+
+- A smoke eval of `golden/example` failed precision (`0.7551` vs `0.80`) with
+  recall at `1.0`. Cause was the golden set, not the skill: `reference_facts`
+  omitted details that are present in `input.snapshot` and that the skill
+  correctly reports (spinner behavior, "in Settings", "the whole time",
+  notification timing/deep-link, profile names, beta build label). Folded the
+  qualifiers into the facts they belong to across all three items and added
+  `gf7`/`gf8` to `gs-003` (with weights re-normalized to sum 1.0). Re-judging
+  the same generations against the updated set gives precision `0.9440` = PASS.
+  Documented the failure signature on `domains/golden-and-canary.md`.
+- Fixed `.claude/settings.json`: all five hook commands ran `python3
+  scripts/...` as a **relative** path, so any shell cwd drift (a plain `cd`
+  into a subdirectory) made every hook fail to resolve. `PreToolUse` is
+  fail-closed, which locked out `Bash`/`Write`/`Edit`/`MultiEdit` for the whole
+  session, including subagents, with no in-session way to recover. Now prefixed
+  with `$CLAUDE_PROJECT_DIR`.
+
 ## 2026-07-29
 
 - Split the user-facing eval entry points: `/aissert:eval` now accepts only

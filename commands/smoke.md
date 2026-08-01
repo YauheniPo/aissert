@@ -8,3 +8,5 @@ $ARGUMENTS --smoke
 
 Follow the skill's orchestration flow exactly. Do not evaluate or score anything
 yourself — all metrics and the verdict come from scripts/aggregate.py.
+Invoke `fact-extractor`, `judge-supported-output-facts`, and
+`judge-expected-output-facts` as their named Claude Code agents.

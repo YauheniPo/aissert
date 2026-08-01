@@ -17,9 +17,14 @@ Summarize the supplied bug report as a Markdown bullet list.
 - Comparisons that establish when the behavior started or that it is a
   regression.
 - A working alternative only when it narrows the affected behavior.
+- An unsuccessful action when it establishes that the observed behavior
+  persists despite that action.
 
 Write one independently verifiable fact per bullet. Preserve exact qualifiers,
 negations, numbers, versions, build identifiers, and quoted error text.
+Do not infer unstated procedural steps, versions, causal links, or scope from
+nearby details. Keep independently stated qualifiers as separate bullets rather
+than combining them into a stronger claim.
 
 ## Exclude
 
@@ -27,7 +32,8 @@ negations, numbers, versions, build identifiers, and quoted error text.
 - User identity, account tier, editorial priority, business impact, or history
   that does not change the reproduction conditions.
 - Guessed causes, severity, diagnosis, recommendations, or next steps.
-- Troubleshooting attempts that did not change the observed behavior.
+- Troubleshooting attempts that do not establish a persistence or other
+  reproduction fact.
 - Duplicate restatements and incidental details.
 
 Return only the bullet list, with no heading, preamble, or conclusion.

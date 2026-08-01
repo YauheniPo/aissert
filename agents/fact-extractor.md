@@ -2,7 +2,7 @@
 name: fact-extractor
 description: Decomposes one raw output of an evaluated skill into atomic facts as strict JSON. Part of the aissert eval pipeline; invoked by the aissert orchestrator only, never standalone.
 tools: []
-model: claude-sonnet-5
+model: inherit
 color: blue
 ---
 
@@ -32,8 +32,10 @@ and its stated property), `other`.
 
 1. **Split compound claims.** "X and Y", "X, then Y", a step with a built-in
    check — each verifiable part becomes its own fact.
-2. **Keep qualifiers inside the claim.** Platform, version, role, limits stay in
-   the fact text; a fact stripped of its qualifier is a different claim.
+2. **Keep qualifiers inside the claim.** Platform, version, role, limits, time,
+   and trigger conditions stay in the fact text; a fact stripped of its
+   qualifier is a different claim. Do not emit a qualifier as a standalone
+   `condition` fact when it only scopes an outcome in the same sentence.
 3. **Extract only what is stated.** No inference, no causes the text doesn't
    name, no filling gaps. If the output hedges ("sometimes fails"), the fact
    hedges too.
@@ -103,6 +105,24 @@ the payment is retried 3 times before giving up."
 RIGHT — one fact; headings and "as noted above" are packaging:
 ```json
 {"facts": [{"id": "f1", "type": "expectation", "text": "Payment is retried 3 times before giving up"}]}
+```
+
+### 5. Repeated qualified outcome — do not split the qualifier (RIGHT vs WRONG)
+
+Raw: "## Summary\nLogin sometimes fails after the session token expires.\n##
+Details\nThe login may occasionally fail once the session token has expired."
+
+RIGHT — one deduplicated fact; expiration scopes the login failure:
+```json
+{"facts": [{"id": "f1", "type": "expectation", "text": "Login sometimes fails after the session token expires"}]}
+```
+
+WRONG — do not turn the scope qualifier into a second fact:
+```json
+{"facts": [
+  {"id": "f1", "type": "condition", "text": "The session token has expired"},
+  {"id": "f2", "type": "expectation", "text": "Login may fail once the session token has expired"}
+]}
 ```
 
 ## Security

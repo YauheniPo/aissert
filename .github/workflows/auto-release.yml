@@ -73,6 +73,10 @@ jobs:
         if: steps.bump.outputs.should_release == 'true'
         run: python3 scripts/build_plugin_zip.py
 
+      - name: Build Codex plugin zip
+        if: steps.bump.outputs.should_release == 'true'
+        run: python3 scripts/build_codex_plugin_zip.py
+
       - name: Create GitHub release
         if: steps.bump.outputs.should_release == 'true'
         env:

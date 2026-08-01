@@ -6,8 +6,10 @@ source_paths:
   - .claude/settings.json
   - .claude/skills
   - .claude/agents
+  - .codex/skills
   - .claude-plugin/plugin.json
   - .claude-plugin/marketplace.json
+  - .codex-plugin/plugin.json
   - agents
   - skills
   - commands
@@ -15,7 +17,13 @@ source_paths:
   - canary
   - tests
   - scripts/claude
+  - scripts/codex
+  - scripts/hooks
+  - project-skills
   - DESIGN.md
+  - PROJECT_RULES.md
+  - AGENTS.md
+  - CLAUDE.md
   - README.md
   - .worktreeinclude
 related_pages:
@@ -31,16 +39,26 @@ aissert/
 │   ├── settings.json           # SessionStart/PreToolUse/PostToolUse/Stop hooks
 │   ├── skills/                 # reusable dev procedures (verify, wiki-maintenance)
 │   └── agents/                 # dev-only review/audit/wiki helper agents
+├── .codex/skills/              # Codex entry points for the shared project workflows
+├── project-skills/             # neutral verify/wiki-maintenance workflow sources
 ├── .claude-plugin/
 │   ├── plugin.json            # name "aissert" — IMMUTABLE, checked by tests/test_plugin_schema.py
 │   └── marketplace.json       # repo = its own single-plugin marketplace
+├── .codex-plugin/
+│   └── plugin.json            # Codex manifest; points at packaged skills
+├── scripts/codex/
+│   └── reinstall_plugin.sh    # local cachebuster, reinstall, and fresh Codex session
 ├── agents/                    # subagent prompts (Task tool, clean context, tools: [])
 │   ├── fact-extractor.md
 │   ├── judge-supported-output-facts.md
 │   └── judge-expected-output-facts.md
 ├── skills/
 │   ├── aissert/
-│   │   ├── SKILL.md             # orchestrator: dispatch only, never evaluates
+│   │   ├── SKILL.md             # neutral entry skill
+│   ├── aissert-codex/
+│   │   └── SKILL.md             # Codex-only isolated-worker execution adapter
+│   ├── aissert-workflow/
+│   │   └── SKILL.md             # neutral orchestration runbook
 │   │   ├── references/          # JSON contracts — single source of truth for formats
 │   │   │   ├── golden-set-schema.md
 │   │   │   ├── results-schema.md
@@ -48,6 +66,7 @@ aissert/
 │   │   └── scripts/             # all deterministic logic
 │   │       ├── validate_golden.py
 │   │       ├── run_target.py     # CI-only headless `claude -p` runner
+│   │       ├── run_codex_eval.py # Codex-only isolated-worker runner
 │   │       ├── aggregate.py      # math, verdict, results.json — see hotspots/aggregate-py.md
 │   │       └── check_canary.py   # strict grouped runtime-agent regression check
 │   └── example-bug-summarizer/
@@ -62,6 +81,7 @@ aissert/
 ├── knowledge/                     # this wiki
 ├── scripts/
 │   ├── claude/                    # deterministic hook scripts used by .claude/settings.json
+│   ├── hooks/                     # shared hook rules used by both host integrations
 │   ├── wiki/                      # wiki tooling (git diff, lint, significant-change, read-plan)
 │   ├── build_plugin_zip.py        # packages the plugin into dist/aissert-<version>.zip
 │   └── bump_version.py            # conventional-commit version bump, called by auto-release.yml
@@ -73,7 +93,9 @@ aissert/
 │   └── release.yml                 # tag push (aissert--v*) -> build zip -> GitHub Release
 ├── .worktreeinclude                 # intentionally empty; don't copy secrets or real datasets
 ├── DESIGN.md                       # source of truth: why, architecture, milestones
-├── CLAUDE.md                       # hard rules for agents working in this repo
+├── PROJECT_RULES.md                # one source of shared engineering rules
+├── AGENTS.md                       # Codex entry point and Codex-specific integration rules
+├── CLAUDE.md                       # Claude Code entry point and Claude-specific integration rules
 └── README.md                       # quickstart
 ```
 
@@ -88,9 +110,10 @@ alone isn't sufficient and a path fully outside the repo is the safer default.
 ## Reading order for a first pass
 
 1. `DESIGN.md` §1-2 — the core idea and invocation contract.
-2. `skills/aissert/SKILL.md` — the actual orchestration runbook.
-3. `agents/*.md` — what each subagent does and doesn't see.
-4. `skills/aissert/references/*.md` — the JSON contracts everything obeys.
+2. `skills/aissert-workflow/SKILL.md` — the platform-neutral orchestration runbook.
+3. `skills/aissert/SKILL.md` — the neutral entry skill.
+4. `agents/*.md` — what each subagent does and doesn't see.
+5. `skills/aissert/references/*.md` — the JSON contracts everything obeys.
 
 For a self-contained local run, `golden/example/README.md` ties the example
 manifest to the bundled `skills/example-bug-summarizer/` target.
@@ -99,5 +122,12 @@ Deeper dives: [eval-pipeline.md](../domains/eval-pipeline.md) (data flow),
 [golden-and-canary.md](../domains/golden-and-canary.md) (test data layers),
 [aggregate-py.md](../hotspots/aggregate-py.md) (the math).
 
-`.claude/` is development automation, not runtime plugin content. The packaged
-plugin still comes only from the allowlist in `scripts/build_plugin_zip.py`.
+`.claude/` is Claude-only development automation and delegates to
+`scripts/hooks/`. Codex plugin manifests do not support lifecycle-hook
+registration, so the Codex archive contains only evaluation runtime files.
+Both packages are allowlist-built by `scripts/build_plugin_zip.py` and
+`scripts/build_codex_plugin_zip.py`.
+
+`project-skills/` owns the neutral `verify` and `wiki-maintenance` procedures.
+The `.claude/skills/` and `.codex/skills/` files are discovery adapters only;
+they point back to those canonical workflows rather than copying them.

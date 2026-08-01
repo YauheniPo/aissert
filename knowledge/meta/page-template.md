@@ -7,7 +7,7 @@ source_paths:
 related_pages:
   - ../index.md
   - lint-rules.md
-last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
+last_validated_commit: 3d3e86042a857f6b8f7023c559cca5eb4421bcb3
 ---
 
 Every page under `knowledge/` except `index.md` and `log.md` needs this
@@ -36,7 +36,8 @@ partial information).
 
 - `source_paths` — every entry MUST exist in the repo (file or directory).
   This is what makes a page "stale": `lint.py`/`changed.py` diff these paths
-  against `last_validated_commit`.
+  against `last_validated_commit`. Include platform wiring and its shared
+  implementation together when documenting a cross-host behavior.
 - `related_pages` — paths are relative to **this page's own directory**, not
   to `knowledge/` root. A page in `hotspots/` linking to `domains/` writes
   `../domains/eval-pipeline.md`.

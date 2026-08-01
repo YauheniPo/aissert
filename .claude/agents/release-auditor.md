@@ -2,7 +2,7 @@
 name: release-auditor
 description: Audits aissert release, snapshot, version, and packaging changes before merging or publishing.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: sonnet
 ---
 
 You audit release readiness for aissert.

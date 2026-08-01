@@ -8,6 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-plugin-111111)](.claude-plugin/plugin.json)
+[![Codex Plugin](https://img.shields.io/badge/Codex-plugin-10a37f)](.codex-plugin/plugin.json)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ![LLM as Judge](https://img.shields.io/badge/LLM--as--judge-fact--level-7c3aed)
@@ -16,8 +17,8 @@
 ![Canary Checked](https://img.shields.io/badge/judges-canary%20checked-16a34a)
 ![Stdlib Only](https://img.shields.io/badge/runtime-stdlib%20only-374151)
 
-Eval harness for Claude Code skills: golden sets, fact-level LLM judges,
-precision/recall gates. Packaged as a Claude Code plugin.
+Eval harness for agent skills: golden sets, fact-level LLM judges,
+precision/recall gates. Packaged as both a Claude Code and Codex plugin.
 
 Instead of high-variance holistic 0–100 LLM scores: decompose the skill's output
 into atomic facts, get binary per-fact verdicts from two isolated judges
@@ -40,7 +41,7 @@ Full rationale and architecture: [DESIGN.md](DESIGN.md).
 - Deterministic Python gates, hashes, exit codes, and resumable artifacts.
 - Isolated judge agents with no tools, plus canary checks for judge drift.
 - Synthetic fixtures in the public repo; real golden sets stay outside the repo.
-- Packaged as a Claude Code plugin with local dev, snapshot, and release flows.
+- Packaged as Claude Code and Codex plugins with local dev, snapshot, and release flows.
 
 ## Quickstart
 
@@ -59,6 +60,13 @@ Install the plugin in Claude Code:
 ```
 /plugin marketplace add /path/to/aissert
 /plugin install aissert@aissert
+```
+
+Install the plugin in Codex:
+
+```
+codex plugin marketplace add YauheniPo/aissert --ref main
+codex plugin add aissert@aissert
 ```
 
 Run a smoke evaluation of the bundled skill against the synthetic example set:
@@ -87,6 +95,32 @@ branch. To pick up a new release later: reinstall, or
 
 This is the right option for sharing the plugin with other users/teams — they
 just need those two commands, nothing to build or host.
+
+### Codex
+
+This repository also contains a Codex marketplace
+(`.agents/plugins/marketplace.json`). Install directly from GitHub:
+
+```
+codex plugin marketplace add YauheniPo/aissert --ref main
+codex plugin add aissert@aissert
+```
+
+To update the marketplace snapshot later, run:
+
+```
+codex plugin marketplace upgrade aissert
+codex plugin add aissert@aissert
+```
+
+### Models
+
+The runtime-agent definitions are shared by both platforms. Claude Code uses
+`model: inherit`, so the judges and extractor follow the active parent-session
+model instead of a stale pinned ID. Codex has no plugin-level model override:
+it uses the model selected for the Codex session. For comparable eval history,
+pass the exact active model only when it is visible as `model_id=…`; otherwise
+leave it unset and `results.json` records `null`.
 
 ## Install (local dev loop)
 
@@ -130,6 +164,38 @@ Loads the plugin fresh every session start — picks up any edit automatically,
 nothing to reinstall. Doesn't work for Claude Desktop, which has no
 `--plugin-dir` flag; Desktop needs the packaged zip (see Packaging below) or
 the marketplace install above.
+
+For an installed local Codex plugin, use the one-command refresh from a plain
+terminal after changing a skill, agent, or hook:
+
+```
+scripts/codex/reinstall_plugin.sh
+```
+
+It validates the Codex package, ensures the local marketplace is registered,
+updates the temporary `+codex.<timestamp>` cachebuster, reinstalls the plugin,
+and opens a fresh Codex session. Run it outside an existing sandboxed Codex
+turn because that turn cannot update the Codex plugin cache. It uses
+`.venv/bin/python` when present (otherwise `python3`); override it with
+`AISSERT_PYTHON=/path/to/python` if necessary. Release automation rewrites the
+local suffix to the same plain version as the Claude plugin before publishing.
+
+Codex runs use the Codex-only `aissert-codex` adapter, which invokes
+`skills/aissert/scripts/run_codex_eval.py`. It starts isolated headless
+`codex exec` workers, writes their artifacts itself, and then runs the same
+canary and aggregation scripts as Claude Code. This avoids relying on a
+named-agent feature that Codex CLI does not provide. Run it with Python 3.12
+(for example `.venv/bin/python`), not macOS's legacy system `python3`.
+For an external target skill, pass its source explicitly as
+`--target-skill-file /path/to/SKILL.md`; the runner embeds the source in each
+isolated worker. It also accepts both gate overrides and `--model-id`, which
+is recorded in `results.json`.
+
+The Codex plugin also registers `SessionStart`, `PreToolUse`, `PostToolUse`,
+and `Stop` hooks. They use the same host-neutral enforcement scripts as the
+Claude integration: wiki context, direct-`main` push/data guards, invariant
+checks plus golden-set versioning, and proportional verification. The host
+configuration files are deliberately separate; the rule implementation is not.
 
 ## Usage
 
@@ -184,32 +250,33 @@ one group cannot hide drift in another.
 
 ## Packaging & releases
 
-Build a distributable plugin zip (for Claude Desktop's "Upload local plugin",
-or any offline install):
+Build distributable plugin zips:
 
 ```
 python3 scripts/build_plugin_zip.py            # -> dist/aissert-<version>.zip
 python3 scripts/build_plugin_zip.py --output /custom/path.zip
+python3 scripts/build_codex_plugin_zip.py      # -> dist/aissert-codex-<version>.zip
 ```
 
-Allowlist, not a denylist: only `.claude-plugin/`, `agents/`, `skills/`,
-`commands/`, `golden/example/`, `canary/`, public top-level docs, and `LICENSE`
-are included. Every other repo dir (`tests/`, `knowledge/`, `scripts/`,
-`.venv/`, `golden-local/`, ...) is excluded by construction, so a new dev file
-never ships by accident.
-Fails (exit 2) if `plugin.json` and `marketplace.json` versions disagree, or
-if an allowlisted path is missing.
+The Claude archive is for Claude Desktop's “Upload local plugin” and contains
+only its runtime allowlist. The Codex archive has
+`.codex-plugin/plugin.json` at its root and contains the same shared runtime
+files. Both builders fail with exit 2 for missing or version-inconsistent
+runtime content.
 
 Releases are fully automatic on every push to `main`:
 
 - `auto-release.yml` reads commit subjects since the last stable
   `aissert--vX.Y.Z` tag, picks a bump level (`feat!:`/`type!:` → major,
-  `feat:` → minor, everything else → patch), bumps both manifest files,
+  `feat:` → minor, everything else → patch), bumps the Claude manifest,
+  Claude marketplace, and Codex manifest,
   commits, pushes a matching tag, builds the zip, and publishes the GitHub
   Release in the same workflow. Every merged PR to `main` produces a new
-  version.
+  version and publishes both plugin ZIPs.
 - `release.yml` remains for manually pushed stable tags. Snapshot tags are
-  excluded from stable releases.
+  excluded from stable releases. `snapshot.yml` separately builds the Claude
+  and Codex ZIPs for each PR, then publishes those exact artifacts in the
+  snapshot release.
 
 Requires `main` to accept direct pushes from the default `GITHUB_TOKEN`
 (no branch protection blocking the Actions bot) — the bump commit is pushed
@@ -252,6 +319,23 @@ GitHub comments can trigger Claude with `@claude` via
 `ANTHROPIC_API_KEY` before using it. Managed Claude Code Review is configured
 outside workflows through the Claude GitHub app; see
 `.github/CLAUDE_CODE_REVIEW_CONFIG.md` for the intended repo settings.
+
+### Codex runtime
+
+The Codex plugin manifest contains only supported plugin fields and runtime
+skills. Codex does not accept plugin-level lifecycle hook registration, so the
+ZIP deliberately excludes development `hooks/`, `scripts/hooks/`, wiki, and
+project instructions. Codex-specific execution lives in the
+`aissert-codex` skill; Claude-only development enforcement remains under
+`.claude/` and delegates to `scripts/hooks/`.
+
+### Project instructions
+
+`PROJECT_RULES.md` is the shared source of repository rules. `AGENTS.md`
+contains Codex-specific integration guidance and `CLAUDE.md` contains
+Claude-specific guidance; neither repeats the shared rules. The `verify` and
+`wiki-maintenance` workflows live once under `project-skills/`, with local
+discovery adapters under `.codex/skills/` and `.claude/skills/`.
 
 ## Contributing
 
