@@ -5,6 +5,9 @@ changed, why, which pages.
 
 ## 2026-08-01
 
+- Split snapshot packaging into separate Claude and Codex build jobs, then a
+  dependent publish job that releases the two produced artifacts. Removed the
+  duplicate Codex package build from regular CI.
 - Fixed Codex plugin validation and runner coverage: removed unsupported
   manifest hooks and their package-only files; allowed SemVer snapshot
   prereleases; added explicit external target-skill source; constrained smoke

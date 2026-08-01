@@ -105,6 +105,20 @@ def test_claude_github_action_uses_repo_settings_and_scoped_tools():
     assert "Bash(pytest tests/ -q)" in workflow
 
 
+def test_snapshot_builds_claude_and_codex_in_separate_jobs_without_ci_duplication():
+    snapshot = (REPO / ".github" / "workflows" / "snapshot.yml").read_text(encoding="utf-8")
+    ci = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert "build-claude-plugin:" in snapshot
+    assert "build-codex-plugin:" in snapshot
+    assert "publish-snapshot:" in snapshot
+    assert "needs: [prepare-snapshot, build-claude-plugin, build-codex-plugin]" in snapshot
+    assert "python3 scripts/build_plugin_zip.py" in snapshot
+    assert "python3 scripts/build_codex_plugin_zip.py" in snapshot
+    assert "actions/download-artifact@v8" in snapshot
+    assert "build-codex-plugin:" not in ci
+
+
 def test_managed_claude_review_config_documents_external_setup():
     text = (REPO / ".github" / "CLAUDE_CODE_REVIEW_CONFIG.md").read_text(encoding="utf-8")
     assert "Claude GitHub app" in text

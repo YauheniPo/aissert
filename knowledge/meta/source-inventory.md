@@ -51,7 +51,7 @@ wiki gap, not a project gap — `scripts/wiki/changed.py` will flag it.
 | `golden/` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `canary/items/`, `canary/extractor-items/`, `canary/manifest.json` | [domains/golden-and-canary.md](../domains/golden-and-canary.md), [hotspots/judges-and-canary.md](../hotspots/judges-and-canary.md) |
 | `tests/` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md), [hotspots/aggregate-py.md](../hotspots/aggregate-py.md) |
-| `.github/PULL_REQUEST_TEMPLATE.md`, `.github/workflows/ci.yml`, `claude.yml`, `auto-release.yml`, `release.yml`, `.github/CLAUDE_CODE_REVIEW_CONFIG.md` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
+| `.github/PULL_REQUEST_TEMPLATE.md`, `.github/workflows/ci.yml`, `snapshot.yml`, `claude.yml`, `auto-release.yml`, `release.yml`, `.github/CLAUDE_CODE_REVIEW_CONFIG.md` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/build_plugin_zip.py`, `scripts/build_codex_plugin_zip.py`, `scripts/bump_version.py` | [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/claude/`, `scripts/codex/`, `scripts/hooks/` | [repo/structure.md](../repo/structure.md), [repo/build-test-and-ci.md](../repo/build-test-and-ci.md) |
 | `scripts/wiki/` | [lint-rules.md](lint-rules.md), this page |

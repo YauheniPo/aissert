@@ -13,17 +13,14 @@ permissions:
   pull-requests: write
 
 jobs:
-  build-snapshot:
+  prepare-snapshot:
     runs-on: ubuntu-latest
+    outputs:
+      snapshot_version: ${{ steps.version.outputs.snapshot_version }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Get current version from plugin.json
         id: version
         run: |
@@ -32,31 +29,70 @@ jobs:
           echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
           echo "Snapshot version: ${snapshot_version}"
 
-      - name: Sync versions for snapshot build
-        run: python3 scripts/sync_versions.py "${{ steps.version.outputs.snapshot_version }}"
-
-      - name: Build plugin zip
+  build-claude-plugin:
+    needs: prepare-snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Sync snapshot version
+        run: python3 scripts/sync_versions.py "${{ needs.prepare-snapshot.outputs.snapshot_version }}"
+      - name: Build Claude plugin zip
         run: python3 scripts/build_plugin_zip.py
-
-      - name: Build Codex plugin zip
-        run: python3 scripts/build_codex_plugin_zip.py
-
-      - name: Restore original versions
-        run: |
-          git checkout .claude-plugin/plugin.json .claude-plugin/marketplace.json .codex-plugin/plugin.json
-
-      - name: Upload snapshot artifacts
+      - name: Upload Claude snapshot artifact
         uses: actions/upload-artifact@v7
         with:
-          name: snapshot-build-${{ github.event.pull_request.number }}
-          path: dist/
+          name: snapshot-claude-plugin-${{ github.event.pull_request.number }}
+          path: dist/aissert-${{ needs.prepare-snapshot.outputs.snapshot_version }}.zip
           retention-days: 30
 
+  build-codex-plugin:
+    needs: prepare-snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Sync snapshot version
+        run: python3 scripts/sync_versions.py "${{ needs.prepare-snapshot.outputs.snapshot_version }}"
+      - name: Build Codex plugin zip
+        run: python3 scripts/build_codex_plugin_zip.py
+      - name: Upload Codex snapshot artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: snapshot-codex-plugin-${{ github.event.pull_request.number }}
+          path: dist/aissert-codex-${{ needs.prepare-snapshot.outputs.snapshot_version }}.zip
+          retention-days: 30
+
+  publish-snapshot:
+    needs: [prepare-snapshot, build-claude-plugin, build-codex-plugin]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download Claude snapshot artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: snapshot-claude-plugin-${{ github.event.pull_request.number }}
+          path: dist
+      - name: Download Codex snapshot artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: snapshot-codex-plugin-${{ github.event.pull_request.number }}
+          path: dist
       - name: Create or update snapshot release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag_name="aissert--v${{ steps.version.outputs.snapshot_version }}"
+          tag_name="aissert--v${{ needs.prepare-snapshot.outputs.snapshot_version }}"
           title="${tag_name} (PR #${{ github.event.pull_request.number }})"
           notes="Snapshot build from PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.head.sha }}"
 
@@ -73,19 +109,18 @@ jobs:
               --prerelease
             gh release upload "${tag_name}" dist/*.zip --clobber
           else
-            echo "Creating new snapshot release: ${tag_name}"
+            echo "Creating snapshot release: ${tag_name}"
             gh release create "${tag_name}" dist/*.zip \
               --title "${title}" \
               --notes "${notes}" \
               --prerelease \
               --verify-tag
           fi
-
       - name: Comment PR with snapshot info
         uses: actions/github-script@v8
         with:
           script: |
-            const tag = "aissert--v${{ steps.version.outputs.snapshot_version }}";
+            const tag = "aissert--v${{ needs.prepare-snapshot.outputs.snapshot_version }}";
             const marker = "<!-- aissert-snapshot-release -->";
             const message = `${marker}\n## Snapshot Release\n\nSnapshot build: [\`${tag}\`](https://github.com/${{ github.repository }}/releases/tag/${tag})\n\nDownload the plugin zip from the [release page](https://github.com/${{ github.repository }}/releases/tag/${tag}).`;
             const comments = await github.paginate(github.rest.issues.listComments, {

@@ -11,6 +11,7 @@ source_paths:
   - tests
   - .github/PULL_REQUEST_TEMPLATE.md
   - .github/workflows/ci.yml
+  - .github/workflows/snapshot.yml
   - .github/workflows/claude.yml
   - .github/CLAUDE_CODE_REVIEW_CONFIG.md
   - .github/workflows/auto-release.yml
@@ -107,12 +108,10 @@ python3.12 -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest tes
 
 ## CI (`.github/workflows/ci.yml`)
 
-Four jobs, on every PR and push to `main`:
+Three jobs, on every PR and push to `main`:
 
 - `schema-lint` — `pytest tests/test_plugin_schema.py -q`.
 - `tests` — `pytest tests/ -q` (everything, including wiki tests).
-- `build-codex-plugin` — builds the allowlisted Codex zip and uploads it as
-  the `aissert-codex-plugin` artifact.
 - `wiki-lint` — `python3 scripts/wiki/lint.py`, step-level `continue-on-error:
   true`. Runs on every PR so drift is visible early, but never blocks a merge:
   the step emits a warning instead of failing the job. Consistent with
@@ -125,6 +124,15 @@ model calls. Canary is mandatory as step 0 of every `/aissert:eval`, but this
 repository does not yet contain the standalone scheduled workflow listed in
 the roadmap. If a prompt change needs confirmation before the next eval, run
 the canary locally/by hand.
+
+## Snapshot packaging (`.github/workflows/snapshot.yml`)
+
+Every eligible PR has one snapshot workflow with no duplicate package builds:
+`prepare-snapshot` calculates the snapshot version, then
+`build-claude-plugin` and `build-codex-plugin` independently build exactly one
+host archive each. `publish-snapshot` downloads those two artifacts and creates
+or updates the prerelease. GitHub therefore displays a distinct build check for
+each host while the release uses the same files that passed those checks.
 
 ## Claude Code automation
 

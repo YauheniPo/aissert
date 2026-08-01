@@ -274,8 +274,9 @@ Releases are fully automatic on every push to `main`:
   Release in the same workflow. Every merged PR to `main` produces a new
   version and publishes both plugin ZIPs.
 - `release.yml` remains for manually pushed stable tags. Snapshot tags are
-  excluded from stable releases. The regular CI and snapshot workflows also
-  build the Codex ZIP; CI uploads it as an artifact.
+  excluded from stable releases. `snapshot.yml` separately builds the Claude
+  and Codex ZIPs for each PR, then publishes those exact artifacts in the
+  snapshot release.
 
 Requires `main` to accept direct pushes from the default `GITHUB_TOKEN`
 (no branch protection blocking the Actions bot) — the bump commit is pushed
