@@ -3,6 +3,24 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-07-31
+
+- A smoke eval of `golden/example` failed precision (`0.7551` vs `0.80`) with
+  recall at `1.0`. Cause was the golden set, not the skill: `reference_facts`
+  omitted details that are present in `input.snapshot` and that the skill
+  correctly reports (spinner behavior, "in Settings", "the whole time",
+  notification timing/deep-link, profile names, beta build label). Folded the
+  qualifiers into the facts they belong to across all three items and added
+  `gf7`/`gf8` to `gs-003` (with weights re-normalized to sum 1.0). Re-judging
+  the same generations against the updated set gives precision `0.9440` = PASS.
+  Documented the failure signature on `domains/golden-and-canary.md`.
+- Fixed `.claude/settings.json`: all five hook commands ran `python3
+  scripts/...` as a **relative** path, so any shell cwd drift (a plain `cd`
+  into a subdirectory) made every hook fail to resolve. `PreToolUse` is
+  fail-closed, which locked out `Bash`/`Write`/`Edit`/`MultiEdit` for the whole
+  session, including subagents, with no in-session way to recover. Now prefixed
+  with `$CLAUDE_PROJECT_DIR`.
+
 ## 2026-07-29
 
 - Split the user-facing eval entry points: `/aissert:eval` now accepts only

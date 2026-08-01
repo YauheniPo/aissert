@@ -4,6 +4,7 @@ Runs as the fast "schema lint" CI step (DESIGN.md §8.1). stdlib only — the
 frontmatter here is deliberately kept to simple `key: value` lines so a naive
 parser is sufficient; if an agent file ever needs nested YAML, revisit.
 """
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -62,10 +63,45 @@ def test_marketplace_json():
 def test_version_sync_between_manifests():
     plugin = load_json(".claude-plugin/plugin.json")
     marketplace = load_json(".claude-plugin/marketplace.json")
+    codex_plugin = load_json(".codex-plugin/plugin.json")
     entry = next(p for p in marketplace["plugins"] if p["name"] == "aissert")
     assert entry["version"] == plugin["version"], (
         "plugin.json and marketplace.json versions must match"
     )
+    assert codex_plugin["version"].split("+", 1)[0] == plugin["version"], (
+        "Codex's release version must match Claude's; a local Codex cachebuster "
+        "suffix is allowed for development reinstalls"
+    )
+
+
+def test_codex_marketplace_and_manifest():
+    marketplace = load_json(".agents/plugins/marketplace.json")
+    plugin = load_json(".codex-plugin/plugin.json")
+    assert marketplace["name"] == "aissert"
+    assert marketplace["interface"]["displayName"] == "aissert"
+    assert plugin["name"] == "aissert"
+    assert re.fullmatch(r"\d+\.\d+\.\d+(?:\+[a-z0-9.-]+)?", plugin["version"])
+    assert plugin["skills"] == "./skills/"
+    entry = next(p for p in marketplace["plugins"] if p["name"] == "aissert")
+    assert entry["source"] == {"source": "local", "path": "./"}
+    assert entry["policy"] == {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+    }
+
+
+def test_codex_package_uses_shared_runtime_sources_only():
+    script_path = REPO / "scripts" / "build_codex_plugin_zip.py"
+    spec = importlib.util.spec_from_file_location("build_codex_plugin_zip", script_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    include_paths = set(module.INCLUDE_PATHS)
+    assert "agents" in include_paths
+    assert "skills/aissert/SKILL.md" in include_paths
+    assert "skills/aissert/scripts/run_codex_eval.py" in include_paths
+    assert "skills/aissert/scripts/run_target.py" not in include_paths
+    assert "commands" not in include_paths
 
 
 # ----------------------------------------------------------------- agents
@@ -82,15 +118,44 @@ def test_agent_frontmatter(filename):
         "aissert agents must declare tools: [] — they never read/write files "
         "(CLAUDE.md hard rule; also mitigates prompt injection)"
     )
-    assert fm["model"] == "claude-sonnet-5", (
-        "agent model is pinned (DESIGN.md §3); changing the pin invalidates "
-        "the canary baseline and metric trends — re-review canary first"
+    assert fm["model"] == "inherit", (
+        "agents must use the current Claude Code session model rather than a "
+        "stale hard-coded model ID"
     )
 
 
 def test_no_unexpected_agent_files():
     found = sorted(p.name for p in (REPO / "agents").glob("*.md"))
     assert found == sorted(AGENT_FILES)
+
+
+def test_extractor_prompt_has_qualified_outcome_dedup_regression_example():
+    prompt = (REPO / "agents" / "fact-extractor.md").read_text(encoding="utf-8")
+    assert "Repeated qualified outcome" in prompt
+    assert "do not turn the scope qualifier into a second fact" in prompt
+
+
+def test_skill_requires_codex_parent_to_persist_runtime_artifacts():
+    skill = (REPO / "skills" / "aissert" / "SKILL.md").read_text(encoding="utf-8")
+    normalized_skill = " ".join(skill.split())
+    assert "## Codex execution adapter" in skill
+    assert "run_codex_eval.py" in skill
+    assert "A child response is not an artifact until the parent has saved it." in normalized_skill
+    assert "before running either `check_canary.py` or `aggregate.py`" in normalized_skill
+
+
+def test_codex_runner_requires_modern_python_for_strict_contract_validation():
+    runner = (REPO / "skills" / "aissert" / "scripts" / "run_codex_eval.py").read_text(encoding="utf-8")
+    assert "sys.version_info < (3, 10)" in runner
+    assert "if not has_text(output):" in runner
+    assert runner.count("if not has_json_object(output):") == 4
+
+
+def test_example_bug_summarizer_keeps_failed_mitigations_and_avoids_inference():
+    skill = (REPO / "skills" / "example-bug-summarizer" / "SKILL.md").read_text(encoding="utf-8")
+    normalized_skill = " ".join(skill.split())
+    assert "observed behavior persists despite that action" in normalized_skill
+    assert "Do not infer unstated procedural steps" in skill
 
 
 # ---------------------------------------------------------- skill, command

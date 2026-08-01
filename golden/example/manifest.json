@@ -1,10 +1,10 @@
 {
   "schema_version": 6,
   "target_skill": "example-bug-summarizer",
-  "set_version": "1.0.6",
+  "set_version": "1.0.8",
   "owner": "epopovich",
   "defaults": {
-    "min_covered_to_total_reference_facts_ratio": 0.70,
-    "min_supported_to_total_output_facts_ratio": 0.80
+    "min_covered_to_total_reference_facts_ratio": 0.7,
+    "min_supported_to_total_output_facts_ratio": 0.8
   }
 }

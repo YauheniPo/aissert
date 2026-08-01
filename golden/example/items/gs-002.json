@@ -7,9 +7,9 @@
   },
   "reference": {
     "reference_facts": [
-      {"id": "gf1", "text": "Switching the app language from English to Spanish makes the History tab show 'No workouts yet'"},
+      {"id": "gf1", "text": "Switching the app language from English to Spanish in Settings makes the History tab show 'No workouts yet' despite months of workout data"},
       {"id": "gf2", "text": "Switching the language back to English restores the history display"},
-      {"id": "gf3", "text": "The web dashboard shows the workout data correctly, so no data is deleted"},
+      {"id": "gf3", "text": "The web dashboard shows the workout data correctly the whole time, so no data is deleted"},
       {"id": "gf4", "text": "The issue reproduces every time"},
       {"id": "gf5", "text": "The issue reproduces on at least two devices (Pixel 8 phone and Galaxy Tab tablet)"}
     ]

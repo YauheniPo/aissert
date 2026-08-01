@@ -1,6 +1,6 @@
 ---
 name: aissert
-description: Evaluate a Claude Code skill against a golden dataset with LLM-as-judge fact-level metrics. Runs the target skill N times per item, extracts atomic facts, judges precision and recall with binary verdicts, and gates on deterministic Python-computed thresholds.
+description: Evaluate an agent skill against a golden dataset with LLM-as-judge fact-level metrics. Runs the target skill N times per item, extracts atomic facts, judges precision and recall with binary verdicts, and gates on deterministic Python-computed thresholds.
 ---
 
 # aissert — eval orchestrator
@@ -24,6 +24,9 @@ score, or judge anything yourself. All numbers and the verdict come from
   manifest.json). If given explicitly, it still gets passed to
   `validate_golden.py --target-skill` as a mismatch check against the manifest.
 - `iterations` — runs of the target skill per dataset item
+- `model_id` — optional identifier of the active host-session model, recorded
+  in `results.json` for comparability. Do not invent it: omit it when the host
+  does not expose the exact model ID.
 - `min_supported_to_total_output_facts_ratio`, `min_covered_to_total_reference_facts_ratio` — optional gate overrides; defaults come from
   the set's manifest.json
 - smoke mode — 3 items × 2 iterations, selected by the `/aissert:smoke`
@@ -31,15 +34,48 @@ score, or judge anything yourself. All numbers and the verdict come from
 
 ## Hard rules (all steps)
 
-- Subagents never read or write files. Pass content INTO prompts; persist their
-  JSON yourself, exactly at the paths below. Pretty-print with 2-space indent
-  when writing — content must stay identical, only whitespace changes.
+- Subagents never read or write files. The runtime-agent prompts in
+  `agents/` are the single source of truth. On platforms with named plugin
+  agents (Claude Code), invoke the named agent. On Codex, read the matching
+  prompt and pass its complete contents into a generic subagent task. Persist
+  their JSON yourself, exactly at the paths below. Pretty-print with 2-space
+  indent when writing — content must stay identical, only whitespace changes.
 - Paste output contracts from `references/results-schema.md` verbatim into every
   subagent prompt (subagents have `tools: []` and cannot read the file). Never
   paraphrase a contract.
 - fact-extractor never sees reference/golden data.
 - Judges never see each other's verdicts, the thresholds, or other iterations.
 - A malformed subagent response is a pipeline error — stop and report, never skip.
+
+## Codex execution adapter
+
+Codex CLI has no named plugin-agent registry. Use the executable adapter below;
+do not attempt to simulate children in the orchestrator conversation:
+
+```
+python3.12 skills/aissert/scripts/run_codex_eval.py \
+  --golden-set <golden_set> --run-dir <run_dir> [--iterations <N>] [--smoke]
+```
+
+The adapter starts a fresh `codex exec` process for every runtime-agent call.
+For every such call, it does all of the following:
+
+1. Read the matching `agents/<name>.md` template and paste its complete
+   contents, plus the applicable output contract, into one isolated child-agent
+   task. Tell the child to return **only** the contract JSON — no Markdown,
+   commentary, or file operations.
+2. Wait for that child's response, parse it as JSON in the parent, and write
+   it to the required artifact path with 2-space indentation. A child response
+   is not an artifact until the parent has saved it.
+3. Verify that every planned artifact exists and parses before running either
+   `check_canary.py` or `aggregate.py`. Do not use a checker merely to discover
+   that child outputs were never persisted.
+
+For a canary, create `<run_dir>/canary/` first and require exactly one JSON
+file for each `canary/items/*.json` and `canary/extractor-items/*.json`. If a
+child cannot be dispatched, returns malformed JSON, or its output cannot be
+written, it stops immediately and names the affected item and path. It does
+not report that as runtime-model drift and does not proceed to `check_canary.py`.
 
 ## Flow
 
@@ -82,7 +118,7 @@ Run directory: `eval-runs/{timestamp}-{target_skill}/` (gitignored).
 5. **Aggregate** — run:
    ```
    python3 scripts/aggregate.py --run-dir <run_dir> --golden-set <golden_set> \
-     --iterations <N> [--min-supported-to-total-output-facts-ratio ..] [--min-covered-to-total-reference-facts-ratio ..] [--model-id <id>]
+     --iterations <N> [--min-supported-to-total-output-facts-ratio ..] [--min-covered-to-total-reference-facts-ratio ..] [--model-id <model_id>]
    ```
    Exit code is the verdict: 0 = pass, 1 = gate failed, 2 = pipeline error.
    Report the summary and `results.json` path to the user.

@@ -63,8 +63,8 @@ def validate() -> list[str]:
         rel = path.relative_to(REPO_ROOT)
         if fm.get("tools") != "[]":
             errors.append(f"{rel}: runtime judge/extractor agents must keep tools: []")
-        if fm.get("model") != "claude-sonnet-5":
-            errors.append(f"{rel}: model pin must remain claude-sonnet-5 unless canary is re-reviewed")
+        if fm.get("model") != "inherit":
+            errors.append(f"{rel}: model must remain inherit so Claude Code uses the active session model")
 
     return errors
 

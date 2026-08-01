@@ -1,0 +1,32 @@
+{
+  "name": "aissert",
+  "version": "0.11.1+codex.20260801084751",
+  "description": "LLM-as-judge evaluation harness for agent skills with fact-level verdicts and deterministic Python gates.",
+  "author": {
+    "name": "Yauheni Papovich",
+    "url": "https://github.com/YauheniPo"
+  },
+  "homepage": "https://github.com/YauheniPo/aissert",
+  "repository": "https://github.com/YauheniPo/aissert",
+  "license": "MIT",
+  "keywords": [
+    "eval",
+    "llm-as-judge",
+    "skills",
+    "testing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "aissert",
+    "shortDescription": "Evaluate agent skills with fact-level deterministic gates.",
+    "longDescription": "Run repeatable LLM-as-judge evaluations using golden datasets, isolated judges, and deterministic precision/recall gates.",
+    "developerName": "Yauheni Papovich",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Evaluate my skill with the bundled aissert golden set."
+    ]
+  }
+}

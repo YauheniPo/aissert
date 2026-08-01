@@ -62,9 +62,9 @@ never re-extracted at eval time — see
 ## Agents (`agents/*.md`)
 
 All three: `tools: []` (never read/write files — content is pasted into the
-prompt, the orchestrator persists the JSON out) and `model: claude-sonnet-5`
-pinned (schema-lint enforced). Changing the pin is the highest-risk change in
-this repo — see the model-pin playbook in
+prompt, the orchestrator persists the JSON out) and `model: inherit`, which
+uses the current Claude Code session model. Changing the selected session model
+is the highest-risk evaluation change in this repo — see the model playbook in
 [change-playbooks.md](change-playbooks.md).
 
 | Agent | Job | Sees | Never sees |

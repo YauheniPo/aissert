@@ -8,6 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-plugin-111111)](.claude-plugin/plugin.json)
+[![Codex Plugin](https://img.shields.io/badge/Codex-plugin-10a37f)](.codex-plugin/plugin.json)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ![LLM as Judge](https://img.shields.io/badge/LLM--as--judge-fact--level-7c3aed)
@@ -16,8 +17,8 @@
 ![Canary Checked](https://img.shields.io/badge/judges-canary%20checked-16a34a)
 ![Stdlib Only](https://img.shields.io/badge/runtime-stdlib%20only-374151)
 
-Eval harness for Claude Code skills: golden sets, fact-level LLM judges,
-precision/recall gates. Packaged as a Claude Code plugin.
+Eval harness for agent skills: golden sets, fact-level LLM judges,
+precision/recall gates. Packaged as both a Claude Code and Codex plugin.
 
 Instead of high-variance holistic 0–100 LLM scores: decompose the skill's output
 into atomic facts, get binary per-fact verdicts from two isolated judges
@@ -61,6 +62,13 @@ Install the plugin in Claude Code:
 /plugin install aissert@aissert
 ```
 
+Install the plugin in Codex:
+
+```
+codex plugin marketplace add YauheniPo/aissert --ref main
+codex plugin add aissert@aissert
+```
+
 Run a smoke evaluation of the bundled skill against the synthetic example set:
 
 ```
@@ -87,6 +95,32 @@ branch. To pick up a new release later: reinstall, or
 
 This is the right option for sharing the plugin with other users/teams — they
 just need those two commands, nothing to build or host.
+
+### Codex
+
+This repository also contains a Codex marketplace
+(`.agents/plugins/marketplace.json`). Install directly from GitHub:
+
+```
+codex plugin marketplace add YauheniPo/aissert --ref main
+codex plugin add aissert@aissert
+```
+
+To update the marketplace snapshot later, run:
+
+```
+codex plugin marketplace upgrade aissert
+codex plugin add aissert@aissert
+```
+
+### Models
+
+The runtime-agent definitions are shared by both platforms. Claude Code uses
+`model: inherit`, so the judges and extractor follow the active parent-session
+model instead of a stale pinned ID. Codex has no plugin-level model override:
+it uses the model selected for the Codex session. For comparable eval history,
+pass the exact active model only when it is visible as `model_id=…`; otherwise
+leave it unset and `results.json` records `null`.
 
 ## Install (local dev loop)
 
@@ -130,6 +164,24 @@ Loads the plugin fresh every session start — picks up any edit automatically,
 nothing to reinstall. Doesn't work for Claude Desktop, which has no
 `--plugin-dir` flag; Desktop needs the packaged zip (see Packaging below) or
 the marketplace install above.
+
+For an installed local Codex plugin, refresh the cache after changing a skill
+or agent, then start a fresh Codex session:
+
+```
+python3 /path/to/codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py /path/to/aissert
+codex plugin add aissert@aissert
+```
+
+The temporary `+codex.<timestamp>` suffix is a local cachebuster only. Release
+automation rewrites the Codex manifest to the same plain version as the Claude
+plugin before publishing.
+
+Codex runs use `skills/aissert/scripts/run_codex_eval.py` internally. It starts
+isolated headless `codex exec` workers, writes their artifacts itself, and then
+runs the same canary and aggregation scripts as Claude Code. This avoids relying
+on a named-agent feature that Codex CLI does not provide. Run it with Python
+3.12 (for example `.venv/bin/python`), not macOS's legacy system `python3`.
 
 ## Usage
 
@@ -184,32 +236,32 @@ one group cannot hide drift in another.
 
 ## Packaging & releases
 
-Build a distributable plugin zip (for Claude Desktop's "Upload local plugin",
-or any offline install):
+Build distributable plugin zips:
 
 ```
 python3 scripts/build_plugin_zip.py            # -> dist/aissert-<version>.zip
 python3 scripts/build_plugin_zip.py --output /custom/path.zip
+python3 scripts/build_codex_plugin_zip.py      # -> dist/aissert-codex-<version>.zip
 ```
 
-Allowlist, not a denylist: only `.claude-plugin/`, `agents/`, `skills/`,
-`commands/`, `golden/example/`, `canary/`, public top-level docs, and `LICENSE`
-are included. Every other repo dir (`tests/`, `knowledge/`, `scripts/`,
-`.venv/`, `golden-local/`, ...) is excluded by construction, so a new dev file
-never ships by accident.
-Fails (exit 2) if `plugin.json` and `marketplace.json` versions disagree, or
-if an allowlisted path is missing.
+The Claude archive is for Claude Desktop's “Upload local plugin” and contains
+only its runtime allowlist. The Codex archive has
+`.codex-plugin/plugin.json` at its root and contains the same shared runtime
+files. Both builders fail with exit 2 for missing or version-inconsistent
+runtime content.
 
 Releases are fully automatic on every push to `main`:
 
 - `auto-release.yml` reads commit subjects since the last stable
   `aissert--vX.Y.Z` tag, picks a bump level (`feat!:`/`type!:` → major,
-  `feat:` → minor, everything else → patch), bumps both manifest files,
+  `feat:` → minor, everything else → patch), bumps the Claude manifest,
+  Claude marketplace, and Codex manifest,
   commits, pushes a matching tag, builds the zip, and publishes the GitHub
   Release in the same workflow. Every merged PR to `main` produces a new
-  version.
+  version and publishes both plugin ZIPs.
 - `release.yml` remains for manually pushed stable tags. Snapshot tags are
-  excluded from stable releases.
+  excluded from stable releases. The regular CI and snapshot workflows also
+  build the Codex ZIP; CI uploads it as an artifact.
 
 Requires `main` to accept direct pushes from the default `GITHUB_TOKEN`
 (no branch protection blocking the Actions bot) — the bump commit is pushed

@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 scripts/claude/hook_pre_tool_guard.py",
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/claude/hook_pre_tool_guard.py",
             "timeout": 5000,
             "statusMessage": "Checking aissert guardrails"
           }
@@ -20,13 +20,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 scripts/claude/hook_post_tool_invariants.py",
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/claude/hook_post_tool_invariants.py",
             "timeout": 5000,
             "statusMessage": "Checking aissert invariants"
           },
           {
             "type": "command",
-            "command": "python3 scripts/claude/hook_bump_golden_version.py",
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/claude/hook_bump_golden_version.py",
             "timeout": 5000,
             "statusMessage": "Bumping golden set_version if items changed"
           }
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 scripts/wiki/hook_session_start.py 2>/dev/null || true",
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/wiki/hook_session_start.py 2>/dev/null || true",
             "timeout": 15000,
             "statusMessage": "Loading LLM wiki read-plan"
           }
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 scripts/claude/hook_stop_verify.py",
+            "command": "python3 $CLAUDE_PROJECT_DIR/scripts/claude/hook_stop_verify.py",
             "timeout": 120000,
             "statusMessage": "Verifying aissert changes"
           }

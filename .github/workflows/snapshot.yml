@@ -38,9 +38,12 @@ jobs:
       - name: Build plugin zip
         run: python3 scripts/build_plugin_zip.py
 
+      - name: Build Codex plugin zip
+        run: python3 scripts/build_codex_plugin_zip.py
+
       - name: Restore original versions
         run: |
-          git checkout .claude-plugin/plugin.json .claude-plugin/marketplace.json
+          git checkout .claude-plugin/plugin.json .claude-plugin/marketplace.json .codex-plugin/plugin.json
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v7

@@ -31,12 +31,20 @@ jobs:
       - name: Build plugin zip
         run: python3 scripts/build_plugin_zip.py
 
+      - name: Build Codex plugin zip
+        run: python3 scripts/build_codex_plugin_zip.py
+
       - name: Check tag matches plugin version
         run: |
           version=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          codex_version=$(python3 -c "import json; print(json.load(open('.codex-plugin/plugin.json'))['version'])")
           expected_tag="aissert--v${version}"
           if [ "${GITHUB_REF_NAME}" != "${expected_tag}" ]; then
             echo "tag ${GITHUB_REF_NAME} does not match plugin.json version ${version} (expected ${expected_tag})" >&2
+            exit 1
+          fi
+          if [ "${codex_version}" != "${version}" ]; then
+            echo "Codex plugin version ${codex_version} does not match ${version}" >&2
             exit 1
           fi
 

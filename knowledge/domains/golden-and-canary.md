@@ -11,7 +11,7 @@ related_pages:
   - ../index.md
   - eval-pipeline.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
+last_validated_commit: f87172744bde4c8bdb2f5b01e8efb4a0b6452e94
 ---
 
 ## The distinction that matters
@@ -23,7 +23,7 @@ last_validated_commit: 67069de36bdb491e51409fbecb8cd9ee2b86068a
   the skill under test.
 
 If you only remember one thing from this page: after changing a judge prompt
-or the model pin, a passing golden-set eval proves nothing if the canary
+or the active model, a passing golden-set eval proves nothing if the canary
 hasn't been re-reviewed — you'd be measuring the skill with a broken ruler
 and not know it.
 
@@ -41,6 +41,16 @@ fact-extractor against itself). `weights` affects **recall only**;
 empty `{}` = uniform. Set hash (SHA-256 over manifest + all items) links a
 `results.json` to the exact data version — changing any byte = new baseline,
 old trends stop being comparable, and that's by design, not a regression.
+
+**`reference_facts` must be complete with respect to the snapshot, not just
+correct.** Precision is judged as "output ⊆ reference_facts" — the judge never
+sees the snapshot. So any fact the skill legitimately reports from the input
+but the reference list omits is scored `unsupported`, and precision drops for a
+skill that did nothing wrong. Symptom: an eval fails precision while recall
+stays at `1.0` and every `unsupported` evidence line reads "no reference fact
+states this" about something plainly present in `input.snapshot`. Fix the set,
+not the skill: fold qualifiers (place, timing, exact wording) into the existing
+fact they belong to, and add genuinely separate observations as new facts.
 
 **Data boundary, hard rule:** no corporate data (real Jira/Confluence
 snapshots) in this repo, ever. `golden/example/` is synthetic (fictional

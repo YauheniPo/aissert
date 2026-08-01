@@ -13,9 +13,9 @@ Only the `!` subject-line marker is checked for breaking changes — footer-styl
 `BREAKING CHANGE:` bodies are not scanned, to keep this a subject-line-only,
 single-pass tool.
 
-Writes the bumped version into .claude-plugin/plugin.json and the matching
-plugin entry in .claude-plugin/marketplace.json. Does not commit, tag, or
-push — the calling workflow does that.
+Writes the bumped version into the Claude plugin manifest and marketplace entry,
+plus the Codex plugin manifest. Does not commit, tag, or push — the calling
+workflow does that.
 
 Exit codes: 0 = bumped (new version printed to stdout), 3 = no commits in
 range (nothing printed), 2 = pipeline error (git/manifest failure).
@@ -31,6 +31,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+CODEX_PLUGIN_JSON = REPO_ROOT / ".codex-plugin" / "plugin.json"
 
 MAJOR_RE = re.compile(r"^\w+(\([^)]*\))?!:")
 FEAT_RE = re.compile(r"^feat(\([^)]*\))?:")
@@ -100,6 +101,12 @@ def write_version(new_version: str) -> None:
     entry = next(p for p in marketplace["plugins"] if p["name"] == plugin["name"])
     entry["version"] = new_version
     MARKETPLACE_JSON.write_text(json.dumps(marketplace, indent=2) + "\n", encoding="utf-8")
+
+    codex_plugin = json.loads(CODEX_PLUGIN_JSON.read_text(encoding="utf-8"))
+    codex_plugin["version"] = new_version
+    CODEX_PLUGIN_JSON.write_text(
+        json.dumps(codex_plugin, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def main() -> int:

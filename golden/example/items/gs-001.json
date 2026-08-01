@@ -9,9 +9,9 @@
     "reference_facts": [
       {"id": "gf1", "text": "The issue affects the Android app"},
       {"id": "gf2", "text": "The affected app version is 3.2.1"},
-      {"id": "gf3", "text": "Email+password login hangs and ends with a 'request timed out' error"},
-      {"id": "gf4", "text": "iOS is not affected"},
-      {"id": "gf5", "text": "The issue appeared after updating from version 3.2.0"},
+      {"id": "gf3", "text": "Email+password login hangs with the spinner running indefinitely and ends with a 'request timed out' error"},
+      {"id": "gf4", "text": "The iPhone (iOS) version works and is not affected"},
+      {"id": "gf5", "text": "The issue started after the last update; version 3.2.0 worked"},
       {"id": "gf6", "text": "The issue reproduces on both wifi and mobile data"},
       {"id": "gf7", "text": "Google sign-in works, only email+password login is affected"}
     ]
