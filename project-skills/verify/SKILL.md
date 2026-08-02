@@ -14,7 +14,7 @@ description: Verify repository changes after code, tests, documentation, workflo
    skills, hooks, workflows, or tests. Reject a change that weakens assertions,
    narrows fixtures, or skips behavior merely to pass.
 3. Build every affected package:
-   - `python3 scripts/build_plugin_zip.py` for the `.claude-plugin/` package surface.
+   - `python3 scripts/build_claude_plugin_zip.py` for the `.claude-plugin/` package surface.
    - `python3 scripts/build_codex_plugin_zip.py` for the `.codex-plugin/` package surface.
    - Run both when touching shared runtime sources (`agents/`, `skills/`,
      `commands/`, `golden/example/`, `canary/`) or release/version code.

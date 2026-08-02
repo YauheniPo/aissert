@@ -58,7 +58,7 @@ def test_host_skill_entrypoints_delegate_to_neutral_project_skills():
 
 def test_shared_verify_covers_both_packaging_surfaces_and_wiki():
     verify = (REPO / "project-skills" / "verify" / "SKILL.md").read_text(encoding="utf-8")
-    assert "scripts/build_plugin_zip.py" in verify
+    assert "scripts/build_claude_plugin_zip.py" in verify
     assert "scripts/build_codex_plugin_zip.py" in verify
     assert "scripts/wiki/lint.py" in verify
 
@@ -113,7 +113,7 @@ def test_snapshot_builds_claude_and_codex_in_separate_jobs_without_ci_duplicatio
     assert "build-codex-plugin:" in snapshot
     assert "publish-snapshot:" in snapshot
     assert "needs: [prepare-snapshot, build-claude-plugin, build-codex-plugin]" in snapshot
-    assert "python3 scripts/build_plugin_zip.py" in snapshot
+    assert "python3 scripts/build_claude_plugin_zip.py" in snapshot
     assert "python3 scripts/build_codex_plugin_zip.py" in snapshot
     assert "actions/download-artifact@v8" in snapshot
     assert "build-codex-plugin:" not in ci
@@ -127,20 +127,22 @@ def test_managed_claude_review_config_documents_external_setup():
 
 
 def test_claude_dev_automation_is_not_packaged_runtime_content():
-    build_zip = load_module("scripts/build_plugin_zip.py")
+    build_zip = load_module("scripts/build_claude_plugin_zip.py")
     include_paths = set(build_zip.INCLUDE_PATHS)
     assert ".claude" not in include_paths
     assert ".github" not in include_paths
     assert "scripts/claude" not in include_paths
 
 
-def test_claude_package_allowlist_excludes_project_and_codex_only_content():
-    build_zip = load_module("scripts/build_plugin_zip.py")
+def test_claude_package_allowlist_excludes_project_fixtures_and_codex_only_content():
+    build_zip = load_module("scripts/build_claude_plugin_zip.py")
     include_paths = set(build_zip.INCLUDE_PATHS)
 
     assert "skills" not in include_paths
     assert "skills/aissert/scripts/run_codex_eval.py" not in include_paths
     assert "skills/aissert/scripts/run_target.py" not in include_paths
+    assert "skills/example-bug-summarizer" not in include_paths
+    assert "golden/example" not in include_paths
     assert "PROJECT_RULES.md" not in include_paths
     assert "AGENTS.md" not in include_paths
     assert "CLAUDE.md" not in include_paths
@@ -159,12 +161,11 @@ def test_claude_package_allowlist_excludes_project_and_codex_only_content():
         "skills/aissert/scripts/aggregate.py",
         "skills/aissert/scripts/check_canary.py",
         "skills/aissert/scripts/validate_golden.py",
-        "skills/example-bug-summarizer",
     } <= include_paths
 
 
 def test_built_claude_archive_excludes_project_and_codex_only_content(tmp_path):
-    build_zip = load_module("scripts/build_plugin_zip.py")
+    build_zip = load_module("scripts/build_claude_plugin_zip.py")
     archive_path = tmp_path / "aissert.zip"
     assert build_zip.main(["--output", str(archive_path)]) == 0
 
@@ -174,6 +175,8 @@ def test_built_claude_archive_excludes_project_and_codex_only_content(tmp_path):
 
     assert "skills/aissert/scripts/run_codex_eval.py" not in names
     assert "skills/aissert/scripts/run_target.py" not in names
+    assert not any(name.startswith("skills/example-bug-summarizer/") for name in names)
+    assert not any(name.startswith("golden/example/") for name in names)
     assert not {
         "AGENTS.md",
         "CLAUDE.md",
@@ -192,6 +195,8 @@ def test_codex_package_contains_only_supported_runtime_content():
     assert "hooks" not in include_paths
     assert "scripts/hooks" not in include_paths
     assert "skills/aissert-codex/SKILL.md" in include_paths
+    assert "skills/example-bug-summarizer" not in include_paths
+    assert "golden/example" not in include_paths
 
 
 def test_built_codex_archive_excludes_unsupported_hooks_and_project_files(tmp_path):
@@ -208,6 +213,8 @@ def test_built_codex_archive_excludes_unsupported_hooks_and_project_files(tmp_pa
     assert not (plugin_root / "scripts" / "hooks").exists()
     assert not (plugin_root / "scripts" / "wiki").exists()
     assert not (plugin_root / "knowledge").exists()
+    assert not (plugin_root / "skills" / "example-bug-summarizer").exists()
+    assert not (plugin_root / "golden" / "example").exists()
 
 
 def test_codex_reinstall_helper_refreshes_cache_and_starts_a_fresh_session(tmp_path):
@@ -291,7 +298,7 @@ def test_pre_tool_guard_detects_real_data_paths():
     guard = load_module("scripts/hooks/pre_tool_guard.py")
     assert guard.command_writes_real_data_inside_repo("cp -R /tmp/data golden-local/set")
     assert guard.command_writes_real_data_inside_repo("mv sample real-golden/demo")
-    assert not guard.command_writes_real_data_inside_repo("python3 scripts/build_plugin_zip.py")
+    assert not guard.command_writes_real_data_inside_repo("python3 scripts/build_claude_plugin_zip.py")
 
 
 def test_post_tool_invariants_hold_for_current_repo():

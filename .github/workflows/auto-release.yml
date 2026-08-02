@@ -69,9 +69,9 @@ jobs:
           git push origin main "${tag_name}"
           echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
 
-      - name: Build plugin zip
+      - name: Build Claude plugin zip
         if: steps.bump.outputs.should_release == 'true'
-        run: python3 scripts/build_plugin_zip.py
+        run: python3 scripts/build_claude_plugin_zip.py
 
       - name: Build Codex plugin zip
         if: steps.bump.outputs.should_release == 'true'

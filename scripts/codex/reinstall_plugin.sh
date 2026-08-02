@@ -55,6 +55,6 @@ codex plugin list 2>/dev/null | grep -F "$PLUGIN_ID" || true
 
 echo
 echo "Done. Launching a new Codex session in $REPO_ROOT ..."
-echo "Try: run the aissert skill with golden_set=golden/example"
+echo "Try: run the aissert skill with your golden_set and target skill"
 cd "$REPO_ROOT"
 exec codex

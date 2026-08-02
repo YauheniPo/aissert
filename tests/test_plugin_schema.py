@@ -82,6 +82,7 @@ def test_codex_marketplace_and_manifest():
     assert plugin["name"] == "aissert"
     assert re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", plugin["version"])
     assert plugin["skills"] == "./skills/"
+    assert "bundled" not in " ".join(plugin["interface"]["defaultPrompt"]).lower()
     assert "hooks" not in plugin
     entry = next(p for p in marketplace["plugins"] if p["name"] == "aissert")
     assert entry["source"] == {"source": "local", "path": "./"}
@@ -104,6 +105,8 @@ def test_codex_package_uses_shared_runtime_sources_only():
     assert "skills/aissert-workflow/SKILL.md" in include_paths
     assert "skills/aissert/scripts/run_codex_eval.py" in include_paths
     assert "skills/aissert/scripts/run_target.py" not in include_paths
+    assert "skills/example-bug-summarizer" not in include_paths
+    assert "golden/example" not in include_paths
     assert "commands" not in include_paths
     assert "hooks" not in include_paths
     assert "scripts/hooks" not in include_paths
@@ -188,29 +191,33 @@ def test_codex_runner_requires_modern_python_for_strict_contract_validation():
 
 
 def test_example_bug_summarizer_keeps_failed_mitigations_and_avoids_inference():
-    skill = (REPO / "skills" / "example-bug-summarizer" / "SKILL.md").read_text(encoding="utf-8")
+    skill = (REPO / "golden" / "example" / "skill" / "SKILL.md").read_text(encoding="utf-8")
     normalized_skill = " ".join(skill.split())
     assert "observed behavior persists despite that action" in normalized_skill
     assert "Do not infer unstated procedural steps" in skill
 
 
+def test_example_bug_summarizer_is_not_a_plugin_skill():
+    assert not (REPO / "skills" / "example-bug-summarizer" / "SKILL.md").exists()
+
+
 # ---------------------------------------------------------- skill, command
 
 
-@pytest.mark.parametrize("skill_name", ["aissert", "aissert-codex", "aissert-workflow", "example-bug-summarizer"])
+@pytest.mark.parametrize("skill_name", ["aissert", "aissert-codex", "aissert-workflow"])
 def test_skill_frontmatter(skill_name):
     fm = parse_frontmatter(REPO / "skills" / skill_name / "SKILL.md")
     assert fm["name"] == skill_name
     assert fm["description"].strip()
 
 
-def test_golden_target_skills_are_packaged():
+def test_project_golden_target_skills_are_available_for_local_checks():
     for manifest_path in sorted((REPO / "golden").glob("*/manifest.json")):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         target_skill = manifest["target_skill"]
-        skill_path = REPO / "skills" / target_skill / "SKILL.md"
+        skill_path = manifest_path.parent / "skill" / "SKILL.md"
         assert skill_path.is_file(), (
-            f"{manifest_path.relative_to(REPO)} targets missing packaged skill "
+            f"{manifest_path.relative_to(REPO)} targets missing project fixture skill "
             f"{target_skill!r}"
         )
         assert parse_frontmatter(skill_path)["name"] == target_skill

@@ -35,8 +35,6 @@ INCLUDE_PATHS = [
     "skills/aissert/scripts/check_canary.py",
     "skills/aissert/scripts/run_codex_eval.py",
     "skills/aissert/scripts/validate_golden.py",
-    "skills/example-bug-summarizer",
-    "golden/example",
     "canary",
     "README.md",
     "LICENSE",

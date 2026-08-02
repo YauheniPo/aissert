@@ -18,7 +18,7 @@
 - Exit codes: 0 = gate passed, 1 = gate failed, 2 = pipeline error.
 - Changes require unit tests in `tests/test_aggregate.py`.
 
-### Scripts (bump_version.py, build_plugin_zip.py, etc.)
+### Scripts (bump_version.py, build_claude_plugin_zip.py, etc.)
 - **No external dependencies**. Use stdlib only.
 - Deterministic: same input → same output always.
 - Exit codes matter: 0 = success, 2 = pipeline error, 3 = no-op (not an error).
@@ -55,7 +55,7 @@
 
 - `skills/aissert/scripts/aggregate.py` — the judge verdict math
 - `scripts/bump_version.py` — version bumping logic
-- `scripts/build_plugin_zip.py` — packaging/allowlist
+- `scripts/build_claude_plugin_zip.py` — Claude packaging/allowlist
 - `.claude-plugin/plugin.json` & `.claude-plugin/marketplace.json` — versions must match
 - `DESIGN.md` — source of truth for architecture
 - `PROJECT_RULES.md` — shared hard rules for agents working in this repo

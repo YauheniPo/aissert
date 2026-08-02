@@ -11,7 +11,7 @@ related_pages:
   - ../index.md
   - eval-pipeline.md
   - ../hotspots/judges-and-canary.md
-last_validated_commit: f87172744bde4c8bdb2f5b01e8efb4a0b6452e94
+last_validated_commit: 966557e7ce41bf0565e705c7a7d365197790b61f
 ---
 
 ## The distinction that matters
@@ -54,8 +54,10 @@ fact they belong to, and add genuinely separate observations as new facts.
 
 **Data boundary, hard rule:** no corporate data (real Jira/Confluence
 snapshots) in this repo, ever. `golden/example/` is synthetic (fictional
-"Meridian" fitness app) and doubles as the CI fixture. Real sets live in
-internal GitLab, passed by path via the `golden_set` parameter.
+"Meridian" fitness app) and doubles as the CI fixture. Its
+`golden/example/skill/` target is a project-only fixture, excluded from both
+release plugin archives. Real sets live in internal GitLab, passed by path via
+the `golden_set` parameter.
 
 **Gitignore is not enough — real sets must live outside the repo tree
 entirely.** A local "directory"-source plugin marketplace install

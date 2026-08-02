@@ -90,13 +90,12 @@ aissert/
 │   │       ├── validate_golden.py
 │   │       ├── run_target.py      # CI-only: claude -p wrapper for headless runs
 │   │       └── aggregate.py
-│   └── example-bug-summarizer/
-│       └── SKILL.md               # bundled synthetic target for local evals
 ├── commands/
 │   ├── eval.md                    # full-eval slash-command wrapper
 │   └── smoke.md                   # fixed 3-item × 2-iteration wrapper
 ├── golden/
-│   └── example/                   # SYNTHETIC demo set only (doubles as CI fixture)
+│   └── example/                   # synthetic demo + project-only target (CI fixture)
+│       └── skill/SKILL.md
 ├── canary/                        # runtime-agent regression set (references/canary-schema.md)
 ├── tests/                         # pytest: aggregate.py units + canary fixtures
 ├── .github/workflows/ci.yml
@@ -282,8 +281,8 @@ see knowledge/domains/golden-and-canary.md).
    logic + pytest. Cheapest to fix while nothing depends on them.
 2. Plugin scaffold: manifests, empty agents with frontmatter, SKILL.md skeleton,
    schema-lint CI. Local dev loop: add repo dir as a local marketplace, reinstall to
-   iterate. The synthetic `golden/example` target skill is bundled so this loop can
-   be exercised without installing another plugin.
+   iterate. The project-only synthetic target lives alongside `golden/example`,
+   keeping local checks self-contained while keeping it out of release packages.
 3. Agent prompts (extractor + 2 judges) with anchored examples; synthetic
    golden/example set.
 4. Pilot on 5–10 items; **calibration**: compare judge verdicts to hand labels; bad

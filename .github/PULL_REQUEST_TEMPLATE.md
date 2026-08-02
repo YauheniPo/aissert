@@ -5,7 +5,7 @@
 ## Checklist
 
 - [ ] `pytest tests/ -q` passes.
-- [ ] `python3 scripts/build_plugin_zip.py` passes.
+- [ ] `python3 scripts/build_claude_plugin_zip.py` passes.
 - [ ] No real/proprietary golden data is present in the repo tree.
 - [ ] Contract changes update `skills/aissert/references/`.
 - [ ] Design deviations update `DESIGN.md`.

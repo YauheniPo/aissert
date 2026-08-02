@@ -3,8 +3,20 @@
 Append one dated entry per maintenance pass. Keep entries short — what
 changed, why, which pages.
 
+## 2026-08-02
+
+- Renamed the Claude package builder to
+  `scripts/build_claude_plugin_zip.py`, making it unambiguous next to the
+  Codex builder. Updated release workflows, hooks, verification, tests, and
+  user-facing commands.
+
 ## 2026-08-01
 
+- Moved `example-bug-summarizer` under `golden/example/skill/` so it remains a
+  project-only synthetic fixture even for directory-source installs; removed
+  the fixture directory from both release package allowlists. Added archive-level
+  regression tests and updated package prompts, reinstall hints, and local-run
+  documentation.
 - Split snapshot packaging into separate Claude and Codex build jobs, then a
   dependent publish job that releases the two produced artifacts. Removed the
   duplicate Codex package build from regular CI.
@@ -230,7 +242,7 @@ changed, why, which pages.
   a real run had these sequential and lost most of its wall-clock to it.
   SKILL.md hard rules also now require 2-space-indent JSON when persisting
   subagent output (content unchanged, readability only).
-- Built plugin packaging + fully-automatic release: `scripts/build_plugin_zip.py`
+- Built plugin packaging + fully-automatic release: `scripts/build_claude_plugin_zip.py`
   (allowlist-based — `.claude-plugin/`, `agents/`, `skills/`, `commands/`,
   `golden/example/`, `canary/`, `README.md`, `LICENSE` only; rewritten from an
   initial denylist version after review caught it shipping `tests/`,

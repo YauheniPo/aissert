@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the aissert plugin into a distributable zip.
+"""Package the Claude variant of the aissert plugin into a distributable zip.
 
 Reads the version from .claude-plugin/plugin.json, checks it matches the
 plugin entry in .claude-plugin/marketplace.json, and zips only what the
@@ -7,7 +7,8 @@ plugin needs at runtime (INCLUDE_PATHS below) — an allowlist, not a denylist:
 dev-only content (tests/, knowledge/ wiki, scripts/wiki/, project instructions,
 .git*, .venv, .idea) and anything outside INCLUDE_PATHS is excluded
 by construction, so a new dev file added to the repo never ships by accident.
-Only the runtime README and license accompany the executable content.
+Only the runtime README and license accompany the executable content. Project
+fixtures, including golden/example and its synthetic target skill, never ship.
 golden-local/ (real/corporate golden sets, see DESIGN.md §9) is never in this
 list.
 
@@ -36,9 +37,7 @@ INCLUDE_PATHS = [
     "skills/aissert/scripts/aggregate.py",
     "skills/aissert/scripts/check_canary.py",
     "skills/aissert/scripts/validate_golden.py",
-    "skills/example-bug-summarizer",
     "commands",
-    "golden/example",
     "canary",
     "README.md",
     "LICENSE",
@@ -93,12 +92,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         plugin_version, marketplace_version = load_versions()
     except (OSError, KeyError, ValueError, json.JSONDecodeError) as e:
-        print(f"build_plugin_zip: cannot read plugin manifests: {e}", file=sys.stderr)
+        print(f"build_claude_plugin_zip: cannot read plugin manifests: {e}", file=sys.stderr)
         return 2
 
     if plugin_version != marketplace_version:
         print(
-            f"build_plugin_zip: version mismatch — plugin.json={plugin_version} "
+            f"build_claude_plugin_zip: version mismatch — plugin.json={plugin_version} "
             f"marketplace.json={marketplace_version}",
             file=sys.stderr,
         )
@@ -112,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
             for path in iter_files(REPO_ROOT):
                 zf.write(path, path.relative_to(REPO_ROOT))
     except FileNotFoundError as e:
-        print(f"build_plugin_zip: {e}", file=sys.stderr)
+        print(f"build_claude_plugin_zip: {e}", file=sys.stderr)
         return 2
 
     print(f"version: {plugin_version}")
