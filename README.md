@@ -51,7 +51,7 @@ Clone the repo and run the deterministic checks:
 git clone https://github.com/YauheniPo/aissert.git
 cd aissert
 pytest tests/ -q
-python3 scripts/build_plugin_zip.py
+python3 scripts/build_claude_plugin_zip.py
 python3 skills/aissert/scripts/validate_golden.py golden/example --target-skill example-bug-summarizer
 ```
 
@@ -69,14 +69,19 @@ codex plugin marketplace add YauheniPo/aissert --ref main
 codex plugin add aissert@aissert
 ```
 
-Run a smoke evaluation of the bundled skill against the synthetic example set:
+To exercise the project-local synthetic fixture, run the local Codex adapter
+from this checkout:
 
 ```
-/aissert:smoke golden_set=golden/example
+python3 skills/aissert/scripts/run_codex_eval.py \
+  --golden-set golden/example \
+  --target-skill-file golden/example/skill/SKILL.md \
+  --run-dir eval-runs/local-example \
+  --smoke
 ```
 
-The example manifest selects the included `example-bug-summarizer` skill, so
-this command works without a separate target skill installation.
+The fixture target and golden set are intentionally kept in the project only
+and are not included in Claude or Codex release packages.
 
 ## Install (for users)
 
@@ -200,8 +205,8 @@ configuration files are deliberately separate; the rule implementation is not.
 ## Usage
 
 ```
-/aissert:eval golden_set=golden/example iterations=3
-/aissert:smoke golden_set=golden/example          # 3 items x 2 iterations
+/aissert:eval golden_set=/path/to/golden-set iterations=3
+/aissert:smoke golden_set=/path/to/golden-set     # 3 items x 2 iterations
 ```
 
 `target_skill` is optional: if omitted, the skill to evaluate comes from the
@@ -230,9 +235,11 @@ python3 skills/aissert/scripts/validate_golden.py <set-dir> --target-skill <skil
 ```
 
 `golden/example/` is a synthetic demo set (fictional app) that doubles as the CI
-fixture. Its target, `skills/example-bug-summarizer/`, is bundled solely as a
-stable local test subject. **No corporate data in this repo, ever** — real sets
-live in internal storage and are passed by path.
+fixture. Its target, `golden/example/skill/`, remains with the set in the
+project solely as a stable local test subject; neither is shipped in plugin
+packages.
+**No corporate data in this repo, ever** — real sets live in internal storage
+and are passed by path.
 
 ## Canary (runtime-agent regression set)
 
@@ -253,16 +260,17 @@ one group cannot hide drift in another.
 Build distributable plugin zips:
 
 ```
-python3 scripts/build_plugin_zip.py            # -> dist/aissert-<version>.zip
-python3 scripts/build_plugin_zip.py --output /custom/path.zip
+python3 scripts/build_claude_plugin_zip.py     # -> dist/aissert-<version>.zip
+python3 scripts/build_claude_plugin_zip.py --output /custom/path.zip
 python3 scripts/build_codex_plugin_zip.py      # -> dist/aissert-codex-<version>.zip
 ```
 
 The Claude archive is for Claude Desktop's “Upload local plugin” and contains
 only its runtime allowlist. The Codex archive has
 `.codex-plugin/plugin.json` at its root and contains the same shared runtime
-files. Both builders fail with exit 2 for missing or version-inconsistent
-runtime content.
+files. Project-only synthetic fixtures (`golden/example` and
+`example-bug-summarizer`) are excluded from both. Both builders fail with exit
+2 for missing or version-inconsistent runtime content.
 
 Releases are fully automatic on every push to `main`:
 
@@ -348,7 +356,7 @@ Before opening a PR:
 
 ```
 pytest tests/ -q
-python3 scripts/build_plugin_zip.py
+python3 scripts/build_claude_plugin_zip.py
 ```
 
 Use conventional commit subjects (`fix:`, `feat:`, `docs:`, `test:`, `ci:`).

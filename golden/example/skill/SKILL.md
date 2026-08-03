@@ -1,6 +1,6 @@
 ---
 name: example-bug-summarizer
-description: Summarize a supplied synthetic bug report as a minimal set of atomic, source-grounded reproduction facts. Use for the bundled golden/example dataset or when a concise bug triage summary must avoid diagnosis, recommendations, and unsupported inference.
+description: Project-only synthetic target for golden/example. Summarize a supplied bug report as a minimal set of atomic, source-grounded reproduction facts without diagnosis, recommendations, or unsupported inference.
 ---
 
 # Example bug summarizer

@@ -30,7 +30,7 @@ related_pages:
   - ../index.md
   - ../domains/eval-pipeline.md
   - build-test-and-ci.md
-last_validated_commit: 464e7c20c4e6b2e85fe28dbb3d04f5515734b4af
+last_validated_commit: 966557e7ce41bf0565e705c7a7d365197790b61f
 ---
 
 ```
@@ -69,12 +69,10 @@ aissert/
 │   │       ├── run_codex_eval.py # Codex-only isolated-worker runner
 │   │       ├── aggregate.py      # math, verdict, results.json — see hotspots/aggregate-py.md
 │   │       └── check_canary.py   # strict grouped runtime-agent regression check
-│   └── example-bug-summarizer/
-│       └── SKILL.md              # stable synthetic target for golden/example
 ├── commands/
 │   ├── eval.md                  # full-eval wrapper over SKILL.md
 │   └── smoke.md                 # fixed 3-item × 2-iteration wrapper
-├── golden/example/               # synthetic demo set + local-run README
+├── golden/example/               # synthetic demo set + project-only target + local-run README
 ├── canary/                       # runtime-agent regression set — never tests the target skill
 │   ├── items/                    # frozen precision/recall judge inputs
 │   └── extractor-items/          # synthetic raw outputs + tolerant fact anchors
@@ -83,7 +81,7 @@ aissert/
 │   ├── claude/                    # deterministic hook scripts used by .claude/settings.json
 │   ├── hooks/                     # shared hook rules used by both host integrations
 │   ├── wiki/                      # wiki tooling (git diff, lint, significant-change, read-plan)
-│   ├── build_plugin_zip.py        # packages the plugin into dist/aissert-<version>.zip
+│   ├── build_claude_plugin_zip.py # packages the Claude plugin into dist/aissert-<version>.zip
 │   └── bump_version.py            # conventional-commit version bump, called by auto-release.yml
 ├── tests/                          # pytest: aggregate.py units + schema lint + wiki lint
 ├── .github/workflows/
@@ -116,7 +114,8 @@ alone isn't sufficient and a path fully outside the repo is the safer default.
 5. `skills/aissert/references/*.md` — the JSON contracts everything obeys.
 
 For a self-contained local run, `golden/example/README.md` ties the example
-manifest to the bundled `skills/example-bug-summarizer/` target.
+manifest to its project-only `skill/SKILL.md` target. The fixture directory is
+excluded from Claude and Codex release packages.
 
 Deeper dives: [eval-pipeline.md](../domains/eval-pipeline.md) (data flow),
 [golden-and-canary.md](../domains/golden-and-canary.md) (test data layers),
@@ -125,7 +124,7 @@ Deeper dives: [eval-pipeline.md](../domains/eval-pipeline.md) (data flow),
 `.claude/` is Claude-only development automation and delegates to
 `scripts/hooks/`. Codex plugin manifests do not support lifecycle-hook
 registration, so the Codex archive contains only evaluation runtime files.
-Both packages are allowlist-built by `scripts/build_plugin_zip.py` and
+Both packages are allowlist-built by `scripts/build_claude_plugin_zip.py` and
 `scripts/build_codex_plugin_zip.py`.
 
 `project-skills/` owns the neutral `verify` and `wiki-maintenance` procedures.

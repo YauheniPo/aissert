@@ -121,7 +121,7 @@ def main() -> int:
             "LICENSE",
             "ROADMAP.md",
             "SECURITY.md",
-            "scripts/build_plugin_zip.py",
+            "scripts/build_claude_plugin_zip.py",
             "scripts/build_codex_plugin_zip.py",
         ),
     )
@@ -131,7 +131,7 @@ def main() -> int:
     if should_pytest:
         checks.append(("pytest tests/ -q", pytest_command()))
     if should_package:
-        checks.append(("python3 scripts/build_plugin_zip.py", ["python3", "scripts/build_plugin_zip.py"]))
+        checks.append(("python3 scripts/build_claude_plugin_zip.py", ["python3", "scripts/build_claude_plugin_zip.py"]))
         checks.append(("python3 scripts/build_codex_plugin_zip.py", ["python3", "scripts/build_codex_plugin_zip.py"]))
     if should_wiki:
         checks.append(("python3 scripts/wiki/lint.py", ["python3", "scripts/wiki/lint.py"]))

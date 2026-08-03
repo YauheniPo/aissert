@@ -52,7 +52,8 @@ aissert mitigates this by:
 
 ## Packaging Model
 
-Release zips are built from an allowlist in `scripts/build_plugin_zip.py`.
+Claude release zips are built from an allowlist in
+`scripts/build_claude_plugin_zip.py`.
 Development directories such as `tests/`, `knowledge/`, `.venv/`, `.idea/`,
 and local golden-set folders are excluded by construction.
 

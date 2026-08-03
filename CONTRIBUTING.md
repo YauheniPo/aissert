@@ -45,12 +45,13 @@ Run the deterministic checks:
 
 ```bash
 pytest tests/ -q
-python3 scripts/build_plugin_zip.py
+python3 scripts/build_claude_plugin_zip.py
 python3 skills/aissert/scripts/validate_golden.py golden/example --target-skill example-bug-summarizer
 ```
 
-The plugin zip is built from an allowlist. Adding a new runtime directory means
-updating `scripts/build_plugin_zip.py` intentionally.
+Plugin zips are built from allowlists. `golden/example/` (including its synthetic
+target skill) is project-only, so do not add it to either package allowlist.
+Adding a new runtime directory means updating the relevant builder intentionally.
 
 ## Commit Style
 
@@ -66,7 +67,7 @@ The release workflow reads commit subjects to decide the next version.
 ## Pull Request Checklist
 
 - Tests pass with `pytest tests/ -q`.
-- Plugin packaging passes with `python3 scripts/build_plugin_zip.py`.
+- Claude plugin packaging passes with `python3 scripts/build_claude_plugin_zip.py`.
 - No real or proprietary golden data is present in the repo tree.
 - Any contract change updates the matching reference file under
   `skills/aissert/references/`.

@@ -20,7 +20,7 @@ source_paths:
   - scripts/codex
   - .codex-plugin
   - scripts/hooks
-  - scripts/build_plugin_zip.py
+  - scripts/build_claude_plugin_zip.py
   - scripts/build_codex_plugin_zip.py
   - scripts/bump_version.py
   - README.md
@@ -31,7 +31,7 @@ related_pages:
   - ../index.md
   - ../hotspots/aggregate-py.md
   - ../domains/change-playbooks.md
-last_validated_commit: 3d3e86042a857f6b8f7023c559cca5eb4421bcb3
+last_validated_commit: 966557e7ce41bf0565e705c7a7d365197790b61f
 ---
 
 ## Local dev loop (plugin)
@@ -71,13 +71,14 @@ Documented in README.md's "Install (for users)" section.
 
 Run:
 ```
-/aissert:eval golden_set=golden/example iterations=3
-/aissert:smoke golden_set=golden/example          # 3 items x 2 iterations
+/aissert:eval golden_set=/path/to/golden-set iterations=3
+/aissert:smoke golden_set=/path/to/golden-set     # 3 items x 2 iterations
 ```
 
-The example manifest selects the bundled `example-bug-summarizer`, so this
-path is self-contained. `golden/example/README.md` has the one-session
-`claude --plugin-dir .` flow. Pass `target_skill=<skill>` only as an explicit
+The example manifest selects the project-only `example-bug-summarizer`, so
+this checkout path is self-contained. `golden/example/README.md` has the
+explicit-target-file Codex run. The example fixture and target are excluded
+from release packages. Pass `target_skill=<skill>` only as an explicit
 manifest mismatch check or when using a different matching dataset.
 
 ## Tests
@@ -192,7 +193,7 @@ checks the integration documentation and source inventory.
 
 ## Packaging & release
 
-`scripts/build_plugin_zip.py` zips the plugin via an **allowlist**: its
+`scripts/build_claude_plugin_zip.py` zips the Claude plugin via an **allowlist**: its
 manifest, agents, commands, example/canary data, and only the shared skill
 entrypoints, contracts, and deterministic scripts the interactive workflow
 needs. It deliberately excludes `run_target.py` (CI-only), `run_codex_eval.py`,
