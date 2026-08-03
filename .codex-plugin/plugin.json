@@ -1,6 +1,6 @@
 {
   "name": "aissert",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "description": "LLM-as-judge evaluation harness for agent skills with fact-level verdicts and deterministic Python gates.",
   "author": {
     "name": "Yauheni Papovich",
